@@ -1,5 +1,5 @@
 ###
-    kartograph - a svg mapping library 
+    kartograph - a svg mapping library
     Copyright (C) 2011  Gregor Aisch
 
     This library is free software; you can redistribute it and/or
@@ -49,58 +49,57 @@
 ###
 
 kartograph.parsecss = (str, callback) ->
-	ret = {}
-	str = munge(str)
-	for css in str.split '`b%'
-		css = css.split '%b`'
-		if css.length < 2 then continue
-		css[0] = restore css[0]
-		props = parsedeclarations(css[1])
-		if ret[css[0]]?
-			for k,v of props
-				ret[css[0]][k] = v
-		else
-			ret[css[0]] = props
-	if __type(callback) == 'function'
-		callback ret
-		return
-	else
-		return ret
+    ret = {}
+    str = munge(str)
+    for css in str.split '`b%'
+        css = css.split '%b`'
+        if css.length < 2 then continue
+        css[0] = restore css[0]
+        props = parsedeclarations(css[1])
+        if ret[css[0]]?
+            for k,v of props
+                ret[css[0]][k] = v
+        else
+            ret[css[0]] = props
+    if __type(callback) == 'function'
+        callback ret
+        return
+    else
+        return ret
 
 munged = {} # cache
 
 parsedeclarations = (index) ->
-	str = munged[index].replace(/^{|}$/g, '')
-	str = munge(str)
-	parsed = {}
-	for decl in str.split(';')
-		decl = decl.split(':')
-		if decl.length < 2 then continue
-		parsed[restore(decl[0])] = restore(decl.slice(1).join(':'))
-	parsed
+    str = munged[index].replace(/^{|}$/g, '')
+    str = munge(str)
+    parsed = {}
+    for decl in str.split(';')
+        decl = decl.split(':')
+        if decl.length < 2 then continue
+        parsed[restore(decl[0])] = restore(decl.slice(1).join(':'))
+    parsed
 
 REbraces = /{[^{}]*}/
 REfull = /\[[^\[\]]*\]|{[^{}]*}|\([^()]*\)|function(\s+\w+)?(\s*%b`\d+`b%){2}/
 REcomment_string = /(?:\/\*(?:[^\*]|\*[^\/])*\*\/)|(\\.|"(?:[^\\\"]|\\.|\\\n)*"|'(?:[^\\\']|\\.|\\\n)*')/g
 REmunged = /%\w`(\d+)`\w%/
-uid = 0; 
+uid = 0;
 
 munge = (str, full) ->
-	str = str.replace REcomment_string, (s, string) ->
-		if !string then return ''
-		replacement = '%s`'+(++uid)+'`s%'
-		munged[uid] = string.replace(/^\\/,'')
-		replacement
-	RE = if full then REfull else REbraces
-	while match = RE.exec(str)
-		replacement = '%b`'+(++uid)+'`b%'
-		munged[uid] = match[0]
-		str = str.replace(RE, replacement)
-	str
+    str = str.replace REcomment_string, (s, string) ->
+        if !string then return ''
+        replacement = '%s`'+(++uid)+'`s%'
+        munged[uid] = string.replace(/^\\/,'')
+        replacement
+    RE = if full then REfull else REbraces
+    while match = RE.exec(str)
+        replacement = '%b`'+(++uid)+'`b%'
+        munged[uid] = match[0]
+        str = str.replace(RE, replacement)
+    str
 
 restore = (str) ->
-	if not str? then return str
-	while match = REmunged.exec(str)
-		str = str.replace(REmunged, munged[match[1]])
-	str.trim()
-
+    if not str? then return str
+    while match = REmunged.exec(str)
+        str = str.replace(REmunged, munged[match[1]])
+    str.trim()

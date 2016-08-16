@@ -22,54 +22,48 @@ class BBox
     2D bounding box
     ###
     constructor: (left=0, top=0, width=null, height=null) ->
-        s = @
         if width == null
-            s.xmin = Number.MAX_VALUE
-            s.xmax = Number.MAX_VALUE*-1
+            @xmin = Number.MAX_VALUE
+            @xmax = Number.MAX_VALUE*-1
         else
-            s.xmin = s.left = left
-            s.xmax = s.right = left + width
-            s.width = width
+            @xmin = @left = left
+            @xmax = @right = left + width
+            @width = width
         if height == null
-            s.ymin = Number.MAX_VALUE
-            s.ymax = Number.MAX_VALUE*-1
+            @ymin = Number.MAX_VALUE
+            @ymax = Number.MAX_VALUE*-1
         else
-            s.ymin = s.top = top
-            s.ymax = s.bottom = height + top
-            s.height = height
+            @ymin = @top = top
+            @ymax = @bottom = height + top
+            @height = height
         return
 
     update: (x, y) ->
         if not y?
             y = x[1]
             x = x[0]
-        s = @
-        s.xmin = Math.min(s.xmin, x)
-        s.ymin = Math.min(s.ymin, y)
-        s.xmax = Math.max(s.xmax, x)
-        s.ymax = Math.max(s.ymax, y)
+        @xmin = Math.min(@xmin, x)
+        @ymin = Math.min(@ymin, y)
+        @xmax = Math.max(@xmax, x)
+        @ymax = Math.max(@ymax, y)
 
-        s.left = s.xmin
-        s.top = s.ymin
-        s.right = s.xmax
-        s.bottom = s.ymax
-        s.width = s.xmax - s.xmin
-        s.height = s.ymax - s.ymin
-        @
+        @left = @xmin
+        @top = @ymin
+        @right = @xmax
+        @bottom = @ymax
+        @width = @xmax - @xmin
+        @height = @ymax - @ymin
+        this
 
     intersects: (bbox) ->
-        bbox.left < s.right and bbox.right > s.left and bbox.top < s.bottom and bbox.bottom > s.top
+        bbox.left < @right and bbox.right > @left and bbox.top < @bottom and bbox.bottom > @top
 
-    inside: (x,y) ->
-        s = @
-        x >= s.left and x <= s.right and y >= s.top and y <= s.bottom
+    inside: (x,y) -> x >= @left and x <= @right and y >= @top and y <= @bottom
 
     join: (bbox) ->
-        s = @
-        s.update(bbox.left, bbox.top)
-        s.update(bbox.right, bbox.bottom)
-        @
-
+        @update(bbox.left, bbox.top)
+        @update(bbox.right, bbox.bottom)
+        this
 
 BBox.fromXML = (xml) ->
     x = Number(xml.getAttribute('x'))
@@ -78,6 +72,4 @@ BBox.fromXML = (xml) ->
     h = Number(xml.getAttribute('h'))
     new BBox x,y,w,h
 
-
 kartograph.BBox = BBox
-

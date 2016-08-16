@@ -1,8 +1,4 @@
-_build
-lib/proj4js/
-
-kjs.sublime-workspace
-
-kjs.sublime-project
-deliver.sh
-.watchr
+dist/
+node_modules/
+coffeelint.json
+.editorconfig

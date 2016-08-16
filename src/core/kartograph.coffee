@@ -16,32 +16,26 @@
     License along with this library. If not, see <http://www.gnu.org/licenses/>.
 ###
 
-
 class Kartograph
-
     constructor: (container, width, height) ->
-        # instantiates a new map
-        me = @
-        me.container = cnt = $(container)
+        @container = cnt = $(container)
         width ?= cnt.width()
         height ?= cnt.height()
         if height == 0
             height = 'auto'
-        me.size =
+        @size =
             h: height
             w: width
-        me.markers = []
-        me.pathById = {}
-        me.container.addClass 'kartograph'
-
+        @markers = []
+        @pathById = {}
+        @container.addClass 'kartograph'
 
     createSVGLayer: (id) ->
-        me = @
-        me._layerCnt ?= 0
-        lid = me._layerCnt++
-        vp = me.viewport
-        cnt = me.container
-        paper = Raphael cnt[0],vp.width,vp.height
+        @_layerCnt ?= 0
+        lid = @_layerCnt++
+        vp = @viewport
+        cnt = @container
+        paper = Raphael cnt[0], vp.width, vp.height
         svg = $ paper.canvas
         svg.css
             position: 'absolute'
@@ -55,17 +49,14 @@ class Kartograph
                 height: vp.height+'px'
 
         svg.addClass id
-        about = $('desc', paper.canvas).text()
-        $('desc', paper.canvas).text(about.replace('with ', 'with kartograph '+kartograph.version+' and '))
         paper
 
     createHTMLLayer: (id) ->
-        me = @
-        vp = me.viewport
-        cnt = me.container
-        me._layerCnt ?= 0
-        lid = me._layerCnt++
-        div = $ '<div class="layer '+id+'" />'
+        vp = @viewport
+        cnt = @container
+        @_layerCnt ?= 0
+        lid = @_layerCnt++
+        div = $ "<div class='layer #{id}' />"
         div.css
             position: 'absolute'
             top: '0px'
@@ -78,95 +69,82 @@ class Kartograph
 
     load: (mapurl, callback, opts) ->
         # load svg map
-        me = @
-        # line 95
         def = $.Deferred()
-        me.clear()
-        me.opts = opts ? {}
-        me.opts.zoom ?= 1
-        me.mapLoadCallback = callback
-        me._loadMapDeferred = def
-        me._lastMapUrl = mapurl # store last map url for map cache
+        @clear()
+        @opts = opts ? {}
+        @opts.zoom ?= 1
+        @mapLoadCallback = callback
+        @_loadMapDeferred = def
+        @_lastMapUrl = mapurl # store last map url for map cache
 
-        if me.cacheMaps and kartograph.__mapCache[mapurl]?
+        if @cacheMaps and kartograph.__mapCache[mapurl]?
             # use map from cache
-            me._mapLoaded kartograph.__mapCache[mapurl]
+            @_mapLoaded kartograph.__mapCache[mapurl]
         else
             # load map from url
             $.ajax
                 url: mapurl
                 dataType: "text"
-                success: me._mapLoaded
-                context: me
-                error: (a,b,c) ->
-                    warn a,b,c
+                success: @_mapLoaded
+                context: this
+                error: (a, b, c) -> warn a, b, c
         return def.promise()
 
-    loadMap: () ->
-        @load.apply @, arguments
-
+    loadMap: () -> @load.apply @, arguments
 
     setMap: (svg, opts) ->
-        me = @
-        me.opts = opts ? {}
-        me.opts.zoom ?= 1
-        me._lastMapUrl = 'string'
-        me._mapLoaded svg
-        return
-
+        @opts = opts ? {}
+        @opts.zoom ?= 1
+        @_lastMapUrl = 'string'
+        @_mapLoaded svg
 
     _mapLoaded: (xml) ->
-        me = @
-
-        if me.cacheMaps
+        if @cacheMaps
             # cache map svg (as string)
             kartograph.__mapCache ?= {}
-            kartograph.__mapCache[me._lastMapUrl] = xml
+            kartograph.__mapCache[@_lastMapUrl] = xml
 
         try
             xml = $(xml) # if $.browser.msie
         catch err
             warn 'something went horribly wrong while parsing svg'
-            me._loadMapDeferred.reject('could not parse svg')
+            @_loadMapDeferred.reject('could not parse svg')
             return
 
-        me.svgSrc = xml
+        @svgSrc = xml
         $view = $('view', xml) # use first view
 
-        if not me.paper?
-            w = me.size.w
-            h = me.size.h
+        if not @paper?
+            w = @size.w
+            h = @size.h
             if h == 'auto'
                 ratio = $view.attr('w') / $view.attr('h')
                 h = w / ratio
-            me.viewport = new BBox 0, 0, w, h
+            @viewport = new BBox 0, 0, w, h
 
-        vp = me.viewport
-        me.viewAB = AB = View.fromXML $view[0]
-        padding = me.opts.padding ? 0
-        halign = me.opts.halign ? 'center'
-        valign = me.opts.valign ? 'center'
-        # me.viewBC = new View AB.asBBox(),vp.width,vp.height, padding, halign, valign
-        zoom = me.opts.zoom ? 1
-        me.viewBC = new View me.viewAB.asBBox(), vp.width*zoom, vp.height*zoom, padding,halign,valign
-        me.proj = kartograph.Proj.fromXML $('proj', $view)[0]
-        if me.mapLoadCallback?
-            me.mapLoadCallback me
-        if me._loadMapDeferred?
-            me._loadMapDeferred.resolve me
-        return
-
+        vp = @viewport
+        @viewAB = AB = View.fromXML $view[0]
+        padding = @opts.padding ? 0
+        halign = @opts.halign ? 'center'
+        valign = @opts.valign ? 'center'
+        # @viewBC = new View AB.asBBox(),vp.width,vp.height, padding, halign, valign
+        zoom = @opts.zoom ? 1
+        @viewBC = new View @viewAB.asBBox(), vp.width*zoom, vp.height*zoom, padding,halign,valign
+        @proj = kartograph.Proj.fromXML $('proj', $view)[0]
+        if @mapLoadCallback?
+            @mapLoadCallback this
+        if @_loadMapDeferred?
+            @_loadMapDeferred.resolve this
 
     addLayer: (id, opts={}) ->
         ###
         add new layer
         ###
-        me = @
-        me.layerIds ?= []
-        me.layers ?= {}
+        @layerIds ?= []
+        @layers ?= {}
 
-        if not me.paper?
-            me.paper = me.createSVGLayer()
+        if not @paper?
+            @paper = @createSVGLayer()
 
         src_id = id
         if __type(opts) == 'object'
@@ -176,18 +154,18 @@ class Kartograph
         else
             opts = {}
 
-        layer_paper = me.paper
+        layer_paper = @paper
         if opts.add_svg_layer
-            layer_paper = me.createSVGLayer()
+            layer_paper = @createSVGLayer()
 
         layer_id ?= src_id
-        svgLayer = $('#'+src_id, me.svgSrc)
+        svgLayer = $('#'+src_id, @svgSrc)
 
         if svgLayer.length == 0
             # warn 'didn\'t find any paths for layer "'+src_id+'"'
             return
 
-        layer = new MapLayer(layer_id, path_id, me, opts.filter, layer_paper)
+        layer = new MapLayer(layer_id, path_id, this, opts.filter, layer_paper)
 
         $paths = $('*', svgLayer[0])
 
@@ -209,10 +187,10 @@ class Kartograph
             else
                 moveOn()
 
-        moveOn = () ->
+        moveOn = () =>
             if layer.paths.length > 0
-                me.layers[layer_id] = layer
-                me.layerIds.push layer_id
+                @layers[layer_id] = layer
+                @layerIds.push layer_id
             # add event handlers
             checkEvents = ['click', 'mouseenter', 'mouseleave', 'dblclick', 'mousedown', 'mouseup', 'mouseover', 'mouseout']
             for evt in checkEvents
@@ -227,54 +205,43 @@ class Kartograph
             setTimeout nextPaths, 0
         else
             nextPaths()
-        me
-
+        this
 
     getLayer: (layer_id) ->
         ### returns a map layer ###
-        me = @
-        if not me.layers[layer_id]?
+        if not @layers[layer_id]?
             warn 'could not find layer ' + layer_id
             return null
-        me.layers[layer_id]
+        @layers[layer_id]
 
     getLayerPath: (layer_id, path_id) ->
-        me = @
-        layer = me.getLayer layer_id
+        layer = @getLayer layer_id
         if layer?
             if __type(path_id) == 'object'
                 return layer.getPaths(path_id)[0]
             else
                 return layer.getPath path_id
-        null
 
     onLayerEvent: (event, callback, layerId) ->
         # DEPRECATED!
-        me = @
-        me.getLayer(layerId).on event, callback
-        me
-
+        @getLayer(layerId).on event, callback
+        this
 
     addMarker: (marker) ->
-        me = @
-        me.markers.push(marker)
-        xy = me.viewBC.project me.viewAB.project me.proj.project marker.lonlat.lon, marker.lonlat.lat
-        marker.render(xy[0],xy[1],me.container, me.paper)
-
+        @markers.push(marker)
+        xy = @viewBC.project @viewAB.project @proj.project marker.lonlat.lon, marker.lonlat.lat
+        marker.render(xy[0],xy[1],@container, @paper)
 
     clearMarkers: () ->
-        me = @
-        for marker in me.markers
+        for marker in @markers
             marker.clear()
-        me.markers = []
-
+        @markers = []
 
     fadeIn: (opts = {}) ->
-        me = @
-        layer_id = opts.layer ? me.layerIds[me.layerIds.length-1]
+        layer_id = opts.layer ? @layerIds[@layerIds.length-1]
         duration = opts.duration ? 500
 
-        for id, paths of me.layers[layer_id].pathsById
+        for id, paths of @layers[layer_id].pathsById
             for path in paths
                 if __type(duration) == "function"
                     dur = duration(path.data)
@@ -283,100 +250,85 @@ class Kartograph
                 path.svgPath.attr 'opacity',0
                 path.svgPath.animate {opacity:1}, dur
 
-
-
     ###
         end of public API
     ###
 
     loadCoastline: ->
-        me = @
         $.ajax
             url: 'coastline.json'
-            success: me.renderCoastline
-            context: me
-
+            success: @renderCoastline
+            context: this
 
     resize: (w, h) ->
         ###
         forces redraw of every layer
         ###
-        me = @
-        cnt = me.container
+        cnt = @container
         w ?= cnt.width()
         h ?= cnt.height()
-        me.viewport = vp = new BBox 0,0,w,h
-        if me.paper?
-            me.paper.setSize vp.width, vp.height
+        @viewport = vp = new BBox 0,0,w,h
+        if @paper?
+            @paper.setSize vp.width, vp.height
         # update size for other svg layers as well
-        for id,layer of me.layers
-            if layer.paper? and layer.paper != me.paper
+        for id,layer of @layers
+            if layer.paper? and layer.paper != @paper
                 layer.paper.setSize vp.width, vp.height
-        padding = me.opts.padding ? 0
-        halign = me.opts.halign ? 'center'
-        valign = me.opts.valign ? 'center'
-        zoom = me.opts.zoom
-        me.viewBC = new View me.viewAB.asBBox(),vp.width*zoom,vp.height*zoom, padding,halign,valign
-        for id,layer of me.layers
-            layer.setView(me.viewBC)
+        padding = @opts.padding ? 0
+        halign = @opts.halign ? 'center'
+        valign = @opts.valign ? 'center'
+        zoom = @opts.zoom
+        @viewBC = new View @viewAB.asBBox(),vp.width*zoom,vp.height*zoom, padding,halign,valign
+        for id,layer of @layers
+            layer.setView(@viewBC)
 
-        if me.symbolGroups?
-            for sg in me.symbolGroups
+        if @symbolGroups?
+            for sg in @symbolGroups
                 sg.onResize()
-        return
-
 
     lonlat2xy: (lonlat) ->
-        me = @
         lonlat = new LonLat(lonlat[0], lonlat[1]) if lonlat.length == 2
         lonlat = new LonLat(lonlat[0], lonlat[1], lonlat[2]) if lonlat.length == 3
-        a = me.proj.project(lonlat.lon, lonlat.lat, lonlat.alt)
-        me.viewBC.project(me.viewAB.project(a))
-
-
+        a = @proj.project(lonlat.lon, lonlat.lat, lonlat.alt)
+        @viewBC.project(@viewAB.project(a))
 
     addSymbolGroup: (symbolgroup) ->
-        me = @
-        me.symbolGroups ?= []
-        me.symbolGroups.push(symbolgroup)
+        @symbolGroups ?= []
+        @symbolGroups.push(symbolgroup)
 
     removeSymbols: (index) ->
-        me = @
         if index?
-            me.symbolGroups[index].remove()
+            @symbolGroups[index].remove()
         else
-            for sg in me.symbolGroups
+            for sg in @symbolGroups
                 sg.remove()
 
-    clear: () ->
-        me = @
-        if me.layers?
-            for id of me.layers
-                me.layers[id].remove()
-            me.layers = {}
-            me.layerIds = []
+    clear: ->
+        if @layers?
+            for id of @layers
+                @layers[id].remove()
+            @layers = {}
+            @layerIds = []
 
-        if me.symbolGroups?
-            for sg in me.symbolGroups
+        if @symbolGroups?
+            for sg in @symbolGroups
                 sg.remove()
-            me.symbolGroups = []
+            @symbolGroups = []
 
-        if me.paper?
-            $(me.paper.canvas).remove()
-            me.paper = undefined
-
+        if @paper?
+            $(@paper.canvas).remove()
+            @paper = undefined
 
     loadCSS: (url, callback) ->
         ###
         loads a stylesheet
         ###
-        me = @
         if not Raphael.svg
             $.ajax
                 url: url
                 dataType: 'text'
-                success: (resp) ->
-                    me.styles = kartograph.parsecss resp
+                success: (resp) =>
+                    @styles = kartograph.parsecss resp
                     callback()
                 error: (a,b,c) ->
                     warn 'error while loading '+url, a,b,c
@@ -385,19 +337,17 @@ class Kartograph
             $('body').append '<link rel="stylesheet" href="'+url+'" />'
             callback()
 
-
     applyCSS: (el, className) ->
         ###
         applies pre-loaded css styles to
         raphael elements
         ###
-        me = @
-        if not me.styles?
+        if not @styles?
             return el
 
-        me._pathTypes ?= ["path", "circle", "rectangle", "ellipse"]
-        me._regardStyles ?= ["fill", "stroke", "fill-opacity", "stroke-width", "stroke-opacity"]
-        for sel of me.styles
+        @_pathTypes ?= ["path", "circle", "rectangle", "ellipse"]
+        @_regardStyles ?= ["fill", "stroke", "fill-opacity", "stroke-width", "stroke-opacity"]
+        for sel of @styles
             p = sel
             for selectors in p.split ','
                 p = selectors.split ' ' # ignore hierarchy
@@ -410,18 +360,17 @@ class Kartograph
                 if classes.length > 0 and classes.indexOf(className) < 0
                     continue
                 p = p[0]
-                if me._pathTypes.indexOf(p) >= 0 and p != el.type
+                if @_pathTypes.indexOf(p) >= 0 and p != el.type
                     continue
-                # if we made it until here, the styles can be applied 
-                props = me.styles[sel]
-                for k in me._regardStyles
+                # if we made it until here, the styles can be applied
+                props = @styles[sel]
+                for k in @_regardStyles
                     if props[k]?
                         el.attr k,props[k]
         el
 
     style: (layer, prop, value, duration, delay) ->
-        me = @
-        layer = me.getLayer(layer)
+        layer = @getLayer(layer)
         if layer?
             layer.style prop, value, duration, delay
 

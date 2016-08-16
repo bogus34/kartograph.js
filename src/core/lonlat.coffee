@@ -1,5 +1,5 @@
 ###
-    kartograph - a svg mapping library 
+    kartograph - a svg mapping library
     Copyright (C) 2011  Gregor Aisch
 
     This library is free software; you can redistribute it and/or
@@ -17,33 +17,29 @@
 ###
 
 class LonLat
-	###
-	represents a Point
-	###
-	constructor: (lon, lat, alt = 0) ->
-		@lon = Number(lon)
-		@lat = Number(lat)
-		@alt = Number(alt)
+    ###
+    represents a Point
+    ###
+    constructor: (lon, lat, alt = 0) ->
+        @lon = Number(lon)
+        @lat = Number(lat)
+        @alt = Number(alt)
 
-	distance: (ll) ->
-		me = @
-		R = 6371 # km
-		deg2rad = Math.PI/180
-		dLat = (ll.lat-me.lat)*deg2rad
-		dLon = (ll.lon-me.lon)*deg2rad
-		lat1 = me.lat*deg2rad
-		lat2 = ll.lat*deg2rad
-		a = Math.sin(dLat/2) * Math.sin(dLat/2) +
-				Math.sin(dLon/2) * Math.sin(dLon/2) * Math.cos(lat1) * Math.cos(lat2); 
-		c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a)); 
-		R * c
+    distance: (ll) ->
+        R = 6371 # km
+        deg2rad = Math.PI/180
+        dLat = (ll.lat-@lat)*deg2rad
+        dLon = (ll.lon-@lon)*deg2rad
+        lat1 = @lat*deg2rad
+        lat2 = ll.lat*deg2rad
+        a = Math.sin(dLat/2) * Math.sin(dLat/2) +
+            Math.sin(dLon/2) * Math.sin(dLon/2) * Math.cos(lat1) * Math.cos(lat2)
+        c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a))
+        R * c
 
 class LatLon extends LonLat
-	constructor: (lat, lon, alt = 0) ->
-		super lon, lat, alt
-
+    constructor: (lat, lon, alt = 0) ->
+        super lon, lat, alt
 
 root.kartograph.LonLat = LonLat
 root.kartograph.LatLon = LatLon
-
-

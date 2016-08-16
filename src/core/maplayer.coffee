@@ -1,5 +1,5 @@
 ###
-    kartograph - a svg mapping library 
+    kartograph - a svg mapping library
     Copyright (C) 2011,2012  Gregor Aisch
 
     This library is free software; you can redistribute it and/or
@@ -16,88 +16,68 @@
     License along with this library. If not, see <http://www.gnu.org/licenses/>.
 ###
 
-class MapLayer
+class EventContext
+    constructor: (@type, @cb, @layer) ->
+    handle: (e) =>
+        path = @layer.map.pathById[e.target.getAttribute('id')]
+        @cb path.data, path.svgPath, e
 
+class MapLayer
     constructor: (layer_id, path_id, map, filter, paper)->
-        me = @
-        me.id = layer_id
-        me.path_id = path_id
-        me.paper = paper ? map.paper
-        me.view = map.viewBC
-        me.map = map
-        me.filter = filter
+        @id = layer_id
+        @path_id = path_id
+        @paper = paper ? map.paper
+        @view = map.viewBC
+        @map = map
+        @filter = filter
 
 
     addPath: (svg_path, titles) ->
-        me = @
-        me.paths ?= []
-        layerPath = new MapLayerPath(svg_path, me.id, me, titles)
-        if __type(me.filter) == 'function'
-            if me.filter(layerPath.data) == false
+        @paths ?= []
+        layerPath = new MapLayerPath(svg_path, @id, this, titles)
+        if __type(@filter) == 'function'
+            if @filter(layerPath.data) == false
                 layerPath.remove()
                 return
 
-        me.paths.push(layerPath)
+        @paths.push(layerPath)
 
-        if me.path_id?
-            me.pathsById ?= {}
-            me.pathsById[layerPath.data[me.path_id]] ?= []
-            me.pathsById[layerPath.data[me.path_id]].push(layerPath)
+        if @path_id?
+            @pathsById ?= {}
+            @pathsById[layerPath.data[@path_id]] ?= []
+            @pathsById[layerPath.data[@path_id]].push(layerPath)
 
-
-    hasPath: (id) ->
-        me = @
-        me.pathsById? and me.pathsById[id]?
-
-
-    getPathsData: () ->
-        ### returns a list of all shape data dictionaries ###
-        me = @
-        pd = []
-        for path in me.paths
-            pd.push path.data
-        pd
-
-
-    getPath: (id) ->
-        me = @
-        if me.hasPath id
-            return me.pathsById[id][0]
-        return null
-        #console.warn 'path '+id+' not found'
-
+    hasPath: (id) -> @pathsById? and @pathsById[id]?
+    getPathsData: () -> path.data for path in @paths
+    getPath: (id) -> @pathsById[id][0] if @hasPath id
 
     getPaths: (query) ->
-        me = @
+        return [] unless __type(query) == 'object'
         matches = []
-        if __type(query) == 'object'
-            for path in me.paths
-                match = true
-                for key of query
-                    match = match && path.data[key] == query[key]
-                matches.push path if match
+        for path in @paths
+            match = true
+            for key of query
+                match = match && path.data[key] == query[key]
+                break unless match
+            matches.push path if match
         matches
-
 
     setView: (view) ->
         ###
         # after resizing of the map, each layer gets a new view
         ###
-        me = @
-        for path in me.paths
+        for path in @paths
             path.setView(view)
-        me
+        this
 
     remove: ->
         ###
         removes every path
         ###
-        me = @
-        for path in me.paths
-            path.remove()
+        path.remove() for path in @paths
+        undefined
 
     style: (props, value, duration, delay) ->
-        me = @
         if __type(props) == "string"
             key = props
             props = {}
@@ -107,7 +87,7 @@ class MapLayer
             duration = value
 
         duration ?= 0
-        $.each me.paths, (i, path) ->
+        $.each @paths, (i, path) ->
             attrs = {}
             for prop, val of props
                 attrs[prop] = resolve(val, path.data)
@@ -119,30 +99,20 @@ class MapLayer
                 anim = Raphael.animation(attrs, dur * 1000)
                 path.svgPath.animate(anim.delay(dly * 1000))
             else
-                if delay == 0
+                if delay is 0
                     setTimeout () ->
                         path.svgPath.attr(attrs)
                     , 0
                 else
                     path.svgPath.attr(attrs)
-        me
+        this
 
     on: (event, callback) ->
-        me = @
-        class EventContext
-            constructor: (@type, @cb, @layer) ->
-            handle: (e) =>
-                me = @
-                path = me.layer.map.pathById[e.target.getAttribute('id')]
-                me.cb path.data, path.svgPath, e
-
-        ctx = new EventContext(event, callback, me)
-        for path in me.paths
-            $(path.svgPath.node).bind event, ctx.handle
-        me
+        ctx = new EventContext(event, callback, this)
+        $(path.svgPath.node).bind event, ctx.handle for path in @paths
+        this
 
     tooltips: (content, delay) ->
-        me = @
         setTooltip = (path, tt) ->
             cfg =
                 position:
@@ -155,8 +125,8 @@ class MapLayer
                     show: (evt, api) ->
                         # make sure that two tooltips are never shown
                         # together at the same time
-                        $('.qtip').filter () ->
-                            this != api.elements.tooltip.get(0)
+                        $('.qtip')
+                        .filter -> api.elements.tooltip.get(0) isnt this
                         .hide()
                 content: {}
             if tt?
@@ -167,27 +137,27 @@ class MapLayer
                     cfg.content.text = tt[1]
             else
                 cfg.content.text = 'n/a'
-            $(path.svgPath.node).qtip(cfg);
+            $(path.svgPath.node).qtip(cfg)
 
-        for path in me.paths
+        for path in @paths
             tt = resolve content, path.data
             setTooltip path, tt
-        me
+        this
 
     sort: (sortBy) ->
-        me = @
-        me.paths.sort (a,b) ->
+        @paths.sort (a,b) ->
             av = sortBy(a.data)
             bv = sortBy(b.data)
-            if av == bv
-                return 0
-            return av > bv ? 1 : -1
+            switch
+                when av is bv then 0
+                when av > bv then 1
+                else -1
         lp = false
-        for path in me.paths
+        for path in @paths
             if lp
                 path.svgPath.insertAfter lp.svgPath
             lp = path
-        me
+        this
 
 resolve = (prop, data) ->
     if __type(prop) == 'function'
@@ -195,5 +165,3 @@ resolve = (prop, data) ->
     return prop
 
 map_layer_path_uid = 0
-
-

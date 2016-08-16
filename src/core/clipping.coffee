@@ -20,7 +20,6 @@ kartograph.geom ?= {}
 kartograph.geom.clipping ?= {}
 
 class CohenSutherland
-
     INSIDE = 0
     LEFT = 1
     RIGHT = 2
@@ -28,19 +27,17 @@ class CohenSutherland
     TOP = 8
 
     compute_out_code: (bbox, x, y) ->
-        self = @
-        code = self.INSIDE
-        if x < bbox.left then code |= self.LEFT
-        else if x > bbox.right then code |= self.RIGHT
-        if y < bbox.top then code |= self.TOP
+        code = INSIDE
+        if x < bbox.left then code |= LEFT
+        else if x > bbox.right then code |= RIGHT
+        if y < bbox.top then code |= TOP
         else if y > bbox.bottom
-            code |= self.BOTTOM
+            code |= BOTTOM
         code
 
     clip: (bbox, x0, y0, x1, y1) ->
-        self = @
-        code0 = self.compute_out_code(bbox, x0, y0)
-        code1 = self.compute_out_code(bbox, x1, y1)
+        code0 = @compute_out_code(bbox, x0, y0)
+        code1 = @compute_out_code(bbox, x1, y1)
         accept = False
         while True
             if not (code0 | code1)
@@ -55,19 +52,19 @@ class CohenSutherland
                 cout = if code == 0 then code1 else code0
                 # Now find the intersection point;
                 # use formulas y = y0 + slope * (x - x0), x = x0 + (1 / slope) * (y - y0)
-                if cout & self.TOP
+                if cout & TOP
                     # point is above the clip rectangle
                     x = x0 + (x1 - x0) * (bbox.top - y0) / (y1 - y0)
                     y = bbox.top
-                else if cout & self.BOTTOM
+                else if cout & BOTTOM
                     # point is below the clip rectangle
                     x = x0 + (x1 - x0) * (bbox.bottom - y0) / (y1 - y0)
                     y = bbox.bottom
-                else if cout & self.RIGHT
+                else if cout & RIGHT
                     # point is to the right of clip rectangle
                     y = y0 + (y1 - y0) * (bbox.right - x0) / (x1 - x0)
                     x = bbox.right
-                else if cout & self.LEFT
+                else if cout & LEFT
                     # point is to the left of clip rectangle
                     y = y0 + (y1 - y0) * (bbox.left - x0) / (x1 - x0)
                     x = bbox.left
@@ -76,15 +73,12 @@ class CohenSutherland
                 if cout == code0
                     x0 = x
                     y0 = y
-                    code0 = self.compute_out_code(bbox, x0, y0)
+                    code0 = @compute_out_code(bbox, x0, y0)
                 else
                     x1 = x
                     y1 = y
-                    code1 = self.compute_out_code(bbox, x1, y1)
+                    code1 = @compute_out_code(bbox, x1, y1)
 
         if accept then [x0, y0, x1, y1] else null
 
-
 kartograph.geom.clipping.CohenSutherland = CohenSutherland
-
-
