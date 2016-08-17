@@ -17,7 +17,7 @@
 ###
 
 $ = require 'jquery'
-Raphael = require 'raphael'
+Raphael = require '../vendor/raphael'
 
 {warn, type} = require '../utils'
 View = require './view'
@@ -49,6 +49,8 @@ class Kartograph
         vp = @viewport
         cnt = @container
         paper = Raphael cnt[0], vp.width, vp.height
+        panZoom = paper.panzoom initialZoom: @opts.zoom
+        panZoom.enable()
         svg = $ paper.canvas
         svg.css
             position: 'absolute'
@@ -140,9 +142,12 @@ class Kartograph
         padding = @opts.padding ? 0
         halign = @opts.halign ? 'center'
         valign = @opts.valign ? 'center'
-        # @viewBC = new View AB.asBBox(),vp.width,vp.height, padding, halign, valign
-        zoom = @opts.zoom ? 1
-        @viewBC = new View @viewAB.asBBox(), vp.width*zoom, vp.height*zoom, padding,halign,valign
+        @viewBC = new View AB.asBBox(),vp.width,vp.height, padding, halign, valign
+
+        # Using PanZoom instead
+        # zoom = @opts.zoom ? 1
+        # @viewBC = new View @viewAB.asBBox(), vp.width*zoom, vp.height*zoom, padding,halign,valign
+
         @proj = kartograph.Proj.fromXML $('proj', $view)[0]
         if @mapLoadCallback?
             @mapLoadCallback this
@@ -204,11 +209,15 @@ class Kartograph
             if layer.paths.length > 0
                 @layers[layer_id] = layer
                 @layerIds.push layer_id
+
             # add event handlers
             checkEvents = ['click', 'mouseenter', 'mouseleave', 'dblclick', 'mousedown', 'mouseup', 'mouseover', 'mouseout']
             for evt in checkEvents
-                if type(opts[evt]) == 'function'
-                    layer.on evt, opts[evt]
+                layer.on evt, opts[evt] if type(opts[evt]) is 'function'
+
+            for evt of opts.on
+                layer.on evt, opts.on[evt] if type(opts.on[evt]) is 'function'
+
             if opts.tooltips?
                 layer.tooltips opts.tooltips
             if opts.done?

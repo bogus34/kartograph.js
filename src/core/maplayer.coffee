@@ -16,8 +16,15 @@
     License along with this library. If not, see <http://www.gnu.org/licenses/>.
 ###
 
+$ = require 'jquery'
+Raphael = require '../vendor/raphael'
 {type} = require '../utils'
 MapLayerPath = require './maplayerpath'
+
+PANZOOM_EVENTS = [
+    'beforeApplyZoom', 'afterApplyZoom',
+    'beforeApplyPan', 'afterApplyPan'
+]
 
 class EventContext
     constructor: (@type, @cb, @layer) ->
@@ -110,9 +117,14 @@ class MapLayer
         this
 
     on: (event, callback) ->
-        ctx = new EventContext(event, callback, this)
-        $(path.svgPath.node).bind event, ctx.handle for path in @paths
-        this
+        if event in PANZOOM_EVENTS
+            @panzoom()?.on event, callback
+        else
+            ctx = new EventContext(event, callback, this)
+            $(path.svgPath.node).bind event, ctx.handle for path in @paths
+            this
+
+    panzoom: -> @paper.panzoom()
 
     tooltips: (content, delay) ->
         setTooltip = (path, tt) ->
