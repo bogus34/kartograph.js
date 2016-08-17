@@ -1,4 +1,3 @@
-
 ###
     kartograph - a svg mapping library
     Copyright (C) 2011,2012  Gregor Aisch
@@ -17,12 +16,18 @@
     License along with this library. If not, see <http://www.gnu.org/licenses/>.
 ###
 
+Raphael = require 'raphael'
+geom = require './geom'
+{type} = require '../utils'
+
 class MapLayerPath
+    map_layer_path_uid = 0
+
     constructor: (svg_path, layer_id, layer, titles) ->
         paper = layer.paper
         map = layer.map
         view = map.viewBC
-        @path = path = kartograph.geom.Path.fromSVG(svg_path)
+        @path = path = geom.Path.fromSVG(svg_path)
         @vpath = view.projectPath(path)
         @svgPath = @vpath.toSVG(paper)
         @svgPath.data 'path', this
@@ -32,7 +37,7 @@ class MapLayerPath
         else
             map.applyCSS @svgPath,layer_id
 
-        uid = 'path_'+map_layer_path_uid++
+        uid = 'path_' + map_layer_path_uid++
         @svgPath.node.setAttribute('id', uid)
         map.pathById[uid] = this
         data = {}
@@ -45,9 +50,9 @@ class MapLayerPath
                     v = vn
                 data[attr.name.substr(5)] = v
         @data = data
-        if __type(titles) == 'string'
+        if type(titles) == 'string'
             title = titles
-        else if __type(titles) == 'function'
+        else if type(titles) == 'function'
             title = titles(data)
 
         @svgPath.attr 'title', title if title?
@@ -63,3 +68,5 @@ class MapLayerPath
             @svgPath.attr({ cx: path.x, cy: path.y, r: path.r })
 
     remove: -> @svgPath.remove()
+
+module.exports = MapLayerPath

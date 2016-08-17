@@ -41,5 +41,5 @@ class LatLon extends LonLat
     constructor: (lat, lon, alt = 0) ->
         super lon, lat, alt
 
-root.kartograph.LonLat = LonLat
-root.kartograph.LatLon = LatLon
+module.exports = {LonLat, LatLon}
+

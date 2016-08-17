@@ -16,17 +16,15 @@
     License along with this library. If not, see <http://www.gnu.org/licenses/>.
 ###
 
-
 Kartograph::dotgrid = (opts) ->
-    me = @
     # use specified layer or the last added
-    layer_id = opts.layer ? me.layerIds[me.layerIds.length-1]
+    layer_id = opts.layer ? @layerIds[@layerIds.length-1]
 
-    if not me.layers.hasOwnProperty layer_id
+    if not @layers.hasOwnProperty layer_id
         warn 'dotgrid error: layer "'+layer_id+'" not found'
         return
 
-    layer = me.layers[layer_id]
+    layer = @layers[layer_id]
 
     # initialize path data dictionary
 
@@ -64,8 +62,8 @@ Kartograph::dotgrid = (opts) ->
 
         if dotgrid.grid.length == 0
             # the grid was not yet initialised
-            for x in [0..me.viewport.width] by gridsize
-                for y in [0..me.viewport.height] by gridsize
+            for x in [0..@viewport.width] by gridsize
+                for y in [0..@viewport.height] by gridsize
                     g =
                         x: x+(Math.random()-0.5)*gridsize*0.2
                         y: y+(Math.random()-0.5)*gridsize*0.2
@@ -106,5 +104,3 @@ Kartograph::dotgrid = (opts) ->
                 g.shape.attr ds
 
     return
-
-

@@ -16,10 +16,25 @@
     along with this program.  If not, see <http://www.gnu.org/licenses/>.
 ###
 
+geom = require './geom'
+BBox = require './bbox'
+
 class View
     ###
     2D coordinate transfomation
     ###
+
+    @fromXML: (xml) ->
+        ###
+        constructs a view from XML
+        ###
+        w = Number(xml.getAttribute('w'))
+        h = Number(xml.getAttribute('h'))
+        pad = Number(xml.getAttribute('padding'))
+        bbox_xml = xml.getElementsByTagName('bbox')[0]
+        bbox = BBox.fromXML bbox_xml
+        new View bbox,w,h,pad
+
     constructor: (bbox, width, height, padding, halign, valign) ->
         @bbox = bbox
         @width = width
@@ -27,7 +42,7 @@ class View
         @halign = halign ? 'center'
         @valign = valign ? 'center'
         @height = height
-        @scale = Math.min (width-padding*2) / bbox.width, (height-padding*2) / bbox.height
+        @scale = Math.min (width - padding * 2) / bbox.width, (height-padding*2) / bbox.height
 
     project: (x, y) ->
         if not y?
@@ -83,15 +98,4 @@ class View
 
     asBBox: -> new BBox 0, 0, @width, @height
 
-View.fromXML = (xml) ->
-    ###
-    constructs a view from XML
-    ###
-    w = Number(xml.getAttribute('w'))
-    h = Number(xml.getAttribute('h'))
-    pad = Number(xml.getAttribute('padding'))
-    bbox_xml = xml.getElementsByTagName('bbox')[0]
-    bbox = BBox.fromXML bbox_xml
-    new View bbox,w,h,pad
-
-root.kartograph.View = View
+module.exports = View

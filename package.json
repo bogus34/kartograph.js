@@ -26,13 +26,15 @@
   ],
   "main": "kartograph.js",
   "scripts": {
-    "compile": "./build.sh"
-  },
-  "dependencies": {
-    "jquery": "~3.1.0",
-    "raphael": "~2.x"
+    "clear": "rm -r dist/",
+    "dev:build": "./node_modules/.bin/webpack --config webpack.js",
+    "dev:build:watch": "./node_modules/.bin/webpack --config webpack.js --watch",
+    "production:build": "./node_modules/.bin/webpack --config webpack.js --minimize",
+    "build": "npm run dev:build && npm run production:build"
   },
   "devDependencies": {
+    "jquery": "~3.1.0",
+    "raphael": "~2.x",
     "coffee-loader": "^0.7.2",
     "coffee-script": "~1.10.0",
     "uglify-js": "2.x",

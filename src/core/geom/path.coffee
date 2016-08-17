@@ -16,12 +16,59 @@
     License along with this library. If not, see <http://www.gnu.org/licenses/>.
 ###
 
-geom = kartograph.geom ?= {}
+Raphael = require 'raphael'
+clipping = require './clipping'
 
 class Path
     ###
     represents complex polygons (aka multi-polygons)
     ###
+    @fromSVG: (path) ->
+        ###
+        loads a path from a SVG path string
+        ###
+        contours = []
+        type = path.nodeName
+
+        res = null
+        if type == "path"
+            path_str = path.getAttribute('d').trim()
+            path_data = Raphael.parsePathString path_str
+            closed = path_data[path_data.length-1] == "Z"
+            #closed = path_str[path_str.length-1] == "Z"
+            sep = if closed then "Z M" else "M"
+            #path_str = path_str.substring(1, path_str.length-(if closed then 1 else 0))
+            contour = []
+            for cmd in path_data
+                if cmd.length == 0
+                    continue
+                if cmd[0] == "M"
+                    if contour.length > 2
+                        contours.push contour
+                        contour = []
+                    contour.push [cmd[1], cmd[2]]
+                else if cmd[0] == "L"
+                    contour.push [cmd[1], cmd[2]]
+                else if cmd[0] == "Z"
+                    if contour.length > 2
+                        contours.push contour
+                        contour = []
+            if contour.length >= 2
+                contours.push contour
+                contour = []
+
+            res = new Path(type, contours, closed)
+
+        else if type == "circle"
+
+            cx = path.getAttribute "cx"
+            cy = path.getAttribute "cy"
+            r = path.getAttribute "r"
+
+            res = new Circle(cx,cy,r)
+
+        res
+
     constructor: (type, contours, closed=true) ->
         @type = type
         @contours = []
@@ -137,8 +184,6 @@ class Path
 
         false
 
-kartograph.geom.Path = Path
-
 class Circle extends Path
     constructor: (@x,@y,@r) ->
         super 'circle',null,true
@@ -146,54 +191,6 @@ class Circle extends Path
     toSVG: (paper) -> paper.circle(@x, @y, @r)
     centroid: -> [@x, @y]
     area: -> Math.PI * @r * @r
-
-kartograph.geom.Circle = Circle
-
-Path.fromSVG = (path) ->
-    ###
-    loads a path from a SVG path string
-    ###
-    contours = []
-    type = path.nodeName
-
-    res = null
-    if type == "path"
-        path_str = path.getAttribute('d').trim()
-        path_data = Raphael.parsePathString path_str
-        closed = path_data[path_data.length-1] == "Z"
-        #closed = path_str[path_str.length-1] == "Z"
-        sep = if closed then "Z M" else "M"
-        #path_str = path_str.substring(1, path_str.length-(if closed then 1 else 0))
-        contour = []
-        for cmd in path_data
-            if cmd.length == 0
-                continue
-            if cmd[0] == "M"
-                if contour.length > 2
-                    contours.push contour
-                    contour = []
-                contour.push [cmd[1], cmd[2]]
-            else if cmd[0] == "L"
-                contour.push [cmd[1], cmd[2]]
-            else if cmd[0] == "Z"
-                if contour.length > 2
-                    contours.push contour
-                    contour = []
-        if contour.length >= 2
-            contours.push contour
-            contour = []
-
-        res = new geom.Path(type, contours, closed)
-
-    else if type == "circle"
-
-        cx = path.getAttribute "cx"
-        cy = path.getAttribute "cy"
-        r = path.getAttribute "r"
-
-        res = new geom.Circle(cx,cy,r)
-
-    res
 
 class Line
     ###
@@ -203,7 +200,7 @@ class Line
 
     clipToBBox: (bbox) ->
         # line clipping here
-        clip = new geom.clipping.CohenSutherland().clip
+        clip = new clipping.CohenSutherland().clip
         pts = []
         lines = []
         last_in = false
@@ -231,8 +228,6 @@ class Line
         for [x,y] in @points
             pts.push x+','+y
         'M' + pts.join 'L'
-
-kartograph.geom.Line = Line
 
 __point_in_polygon = (polygon, p) ->
     pi = Math.PI
@@ -268,3 +263,5 @@ __area = (contour) ->
         y2 = contour[(i+1)%n][1]
         s += x1 * y2 - x2 * y1
     s *= 0.5
+
+module.exports = {Path, Circle, Line}

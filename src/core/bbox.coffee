@@ -21,6 +21,14 @@ class BBox
     ###
     2D bounding box
     ###
+
+    @fromXML: (xml) ->
+        x = Number(xml.getAttribute('x'))
+        y = Number(xml.getAttribute('y'))
+        w = Number(xml.getAttribute('w'))
+        h = Number(xml.getAttribute('h'))
+        new BBox x,y,w,h
+
     constructor: (left=0, top=0, width=null, height=null) ->
         if width == null
             @xmin = Number.MAX_VALUE
@@ -65,11 +73,4 @@ class BBox
         @update(bbox.right, bbox.bottom)
         this
 
-BBox.fromXML = (xml) ->
-    x = Number(xml.getAttribute('x'))
-    y = Number(xml.getAttribute('y'))
-    w = Number(xml.getAttribute('w'))
-    h = Number(xml.getAttribute('h'))
-    new BBox x,y,w,h
-
-kartograph.BBox = BBox
+module.exports = BBox

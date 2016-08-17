@@ -16,17 +16,28 @@
     License along with this library. If not, see <http://www.gnu.org/licenses/>.
 ###
 
-
-proj = kartograph.proj = root.kartograph.proj = {}
-
-Function::bind = (scope) ->
-    _function = @
-    ->
-        _function.apply scope,arguments
+BBox = require './bbox'
 
 class Proj
     @parameters = []
     @title = "Projection"
+
+    @fromXML: (xml) ->
+        ###
+        reconstructs a projection from xml description
+        ###
+        id = xml.getAttribute('id')
+        opts = {}
+
+        for i in [0..xml.attributes.length-1]
+            attr = xml.attributes[i]
+            opts[attr.name] = attr.value if attr.name isnt "id"
+
+        throw new Error('unknown projection ' + id) if not proj[id]?
+
+        prj = new proj[id](opts)
+        prj.name = id
+        prj
 
     constructor: (opts) ->
         @lon0 = opts.lon0 ? 0
@@ -80,25 +91,6 @@ class Proj
 
     toString: -> "[Proj: #{@name}]"
 
-Proj.fromXML = (xml) ->
-    ###
-    reconstructs a projection from xml description
-    ###
-    id = xml.getAttribute('id')
-    opts = {}
-
-    for i in [0..xml.attributes.length-1]
-        attr = xml.attributes[i]
-        opts[attr.name] = attr.value if attr.name isnt "id"
-
-    throw new Error('unknown projection ' + id) if not proj[id]?
-
-    prj = new proj[id](opts)
-    prj.name = id
-    prj
-
-kartograph.Proj = Proj
-
 # ---------------------------------
 # Family of Cylindrical Projecitons
 # ---------------------------------
@@ -143,8 +135,6 @@ class Equirectangular extends Cylindrical
         lon = @clon(lon)
         [(lon) * Math.cos(@phi0) * 1000, lat*-1*1000]
 
-proj['lonlat'] = Equirectangular
-
 class CEA extends Cylindrical
     @parameters = ['lon0', 'lat1', 'flip']
     @title = "Cylindrical Equal Area"
@@ -165,8 +155,6 @@ class CEA extends Cylindrical
         y = Math.sin(phi) / Math.cos(@phi1)
         [x*1000,y*1000]
 
-proj['cea'] = CEA
-
 class GallPeters extends CEA
     ###
     Gall-Peters Projection
@@ -176,8 +164,6 @@ class GallPeters extends CEA
     constructor: (opts) ->
         opts.lat1 = 45
         super opts
-
-proj['gallpeters'] = GallPeters
 
 class HoboDyer extends CEA
     ###
@@ -189,8 +175,6 @@ class HoboDyer extends CEA
         opts.lat1 = 37.7
         super opts
 
-proj['hobodyer'] = HoboDyer
-
 class Behrmann extends CEA
     ###
     Behrmann Projection
@@ -201,8 +185,6 @@ class Behrmann extends CEA
         opts.lat1 = 30
         super opts
 
-proj['behrmann'] = Behrmann
-
 class Balthasart extends CEA
     ###
     Balthasart Projection
@@ -212,8 +194,6 @@ class Balthasart extends CEA
     constructor: (opts) ->
         opts.lat1 = 50
         super opts
-
-proj['balthasart'] = Balthasart
 
 class Mercator extends Cylindrical
     ###
@@ -233,8 +213,6 @@ class Mercator extends Cylindrical
         x = lam * 1000
         y = math.log((1+math.sin(phi)) / math.cos(phi)) * 1000
         [x,y]
-
-proj['mercator'] = Mercator
 
 # ----------------------------------------
 # Family of Pseudo-Cylindrical Projecitons
@@ -285,8 +263,6 @@ class NaturalEarth extends PseudoCylindrical
         y = lpphi * (@B0 + phi2 * (@B1 + phi4 * (@B2 + @B3 * phi2 + @B4 * phi4))) * 180 + 270
         [x,y]
 
-proj['naturalearth'] = NaturalEarth
-
 class Robinson extends PseudoCylindrical
     ###
     Robinson Projection
@@ -324,8 +300,6 @@ class Robinson extends PseudoCylindrical
         y = -y if lpphi < 0.0
 
         [x ,y]
-
-proj['robinson'] = Robinson
 
 class EckertIV extends PseudoCylindrical
     ###
@@ -371,8 +345,6 @@ class EckertIV extends PseudoCylindrical
 
         [x,y]
 
-proj['eckert4'] = EckertIV
-
 class Sinusoidal extends PseudoCylindrical
     ###
     Sinusoidal Projection
@@ -387,8 +359,6 @@ class Sinusoidal extends PseudoCylindrical
         y = 1032 * phi
 
         [x,y]
-
-proj['sinusoidal'] = Sinusoidal
 
 class Mollweide extends PseudoCylindrical
     ###
@@ -440,8 +410,6 @@ class Mollweide extends PseudoCylindrical
         y = 1000 * @cy * math.sin(phi)
         [x,y*-1]
 
-proj['mollweide'] = Mollweide
-
 class WagnerIV extends Mollweide
     ###
     Wagner IV Projection
@@ -452,8 +420,6 @@ class WagnerIV extends Mollweide
         # p=math.pi/3
         super opts, 1.0471975511965976
 
-proj['wagner4'] = WagnerIV
-
 class WagnerV extends Mollweide
     ###
     Wagner V Projection
@@ -463,8 +429,6 @@ class WagnerV extends Mollweide
     constructor: (opts) ->
         # p=math.pi/3
         super opts,null,0.90977,1.65014,3.00896
-
-proj['wagner5'] = WagnerV
 
 class Loximuthal extends PseudoCylindrical
     # XXX wtf?
@@ -487,8 +451,6 @@ class Loximuthal extends PseudoCylindrical
         x *= 1000
         y = 1000 * (phi - @phi0)
         [x,y*-1]
-
-proj['loximuthal'] = Loximuthal
 
 class CantersModifiedSinusoidalI extends PseudoCylindrical
     ###
@@ -521,9 +483,6 @@ class CantersModifiedSinusoidalI extends PseudoCylindrical
         y = 1000 * lat * (C1 + C3 * y2 + C5 * y4)
         [x,y*-1]
 
-proj['canters1'] = CantersModifiedSinusoidalI
-
-
 class Hatano extends PseudoCylindrical
     @title = "Hatano Projection"
 
@@ -555,8 +514,6 @@ class Hatano extends PseudoCylindrical
         y = 1000 * Math.sin(phi) * (if phi < 0.0 then FYCS else FYCN)
         return [x, y*-1]
 
-proj['hatano'] = Hatano
-
 class GoodeHomolosine extends PseudoCylindrical
     @title = "Goode Homolosine Projection"
     @parameters = ['lon0']
@@ -574,8 +531,6 @@ class GoodeHomolosine extends PseudoCylindrical
             return @p1.project(lon, lat)
         else
             return @p0.project(lon, lat)
-
-proj['goodehomolosine'] = GoodeHomolosine
 
 class Nicolosi extends PseudoCylindrical
     @title = "Nicolosi Globular Projection"
@@ -633,12 +588,9 @@ class Nicolosi extends PseudoCylindrical
 
     world_bbox: -> new BBox(-@r, -@r, @r*2, @r*2)
 
-proj['nicolosi'] = Nicolosi
-
 # -------------------------------
 # Family of Azimuthal Projecitons
 # -------------------------------
-
 
 class Azimuthal extends Proj
     ###
@@ -692,8 +644,6 @@ class Orthographic extends Azimuthal
         y = @r + yo
         [x,y]
 
-proj['ortho'] = Orthographic
-
 class LAEA extends Azimuthal
     ###
     Lambert Azimuthal Equal-Area Projection
@@ -727,8 +677,6 @@ class LAEA extends Azimuthal
         x = @r + xo
         y = @r + yo
         [x,y]
-
-proj['laea'] = LAEA
 
 class LAEA_Alaska extends LAEA
     constructor: () ->
@@ -774,8 +722,6 @@ class LAEA_USA extends LAEA
             x += -80
         [x,y]
 
-proj['laea-usa'] = LAEA_USA
-
 class Stereographic extends Azimuthal
     ###
     Stereographic projection
@@ -800,8 +746,6 @@ class Stereographic extends Azimuthal
         x = @r + xo
         y = @r + yo
         [x,y]
-
-proj['stereo'] = Stereographic
 
 class Satellite extends Azimuthal
     ###
@@ -875,8 +819,6 @@ class Satellite extends Azimuthal
 
     sea: -> [@r + Math.cos(@rad(phi)) * @r, @r + Math.sin(@rad(phi)) * @r] for phi in [0..360]
 
-proj['satellite'] = Satellite
-
 class EquidistantAzimuthal extends Azimuthal
     ###
     Equidistant projection
@@ -905,8 +847,6 @@ class EquidistantAzimuthal extends Azimuthal
 
     _visible: (lon, lat) ->
         true
-
-proj['equi'] = EquidistantAzimuthal
 
 class Aitoff extends PseudoCylindrical
     ###
@@ -946,16 +886,12 @@ class Aitoff extends PseudoCylindrical
     _visible: (lon, lat) ->
         true
 
-proj['aitoff'] = Aitoff
-
 class Winkel3 extends Aitoff
     @title = "Winkel Tripel Projection"
 
     constructor: (opts) ->
         super opts
         @winkel = true
-
-proj['winkel3'] = Winkel3
 
 # -------------------------------
 # Family of Conic Projecitons
@@ -1022,7 +958,40 @@ class LCC extends Conic
 
         [x,y*-1]
 
-#too buggy
-proj['lcc'] = LCC
-
 class PseudoConic extends Conic
+
+proj =
+    lonlat: Equirectangular
+    cea: CEA
+    gallpeters: GallPeters
+    hobodyer: HoboDyer
+    behrmann: Behrmann
+    balthasart: Balthasart
+    mercator: Mercator
+    naturalearth: NaturalEarth
+    robinson: Robinson
+    eckert4: EckertIV
+    sinusoidal: Sinusoidal
+    mollweide: Mollweide
+    wagner4: WagnerIV
+    wagner5: WagnerV
+    loximuthal: Loximuthal
+    canters1: CantersModifiedSinusoidalI
+    hatano: Hatano
+    goodehomolosine: GoodeHomolosine
+    nicolosi: Nicolosi
+    ortho: Orthographic
+    laea: LAEA
+    'laea-usa': LAEA_USA
+    stereo: Stereographic
+    satellite: Satellite
+    equi: EquidistantAzimuthal
+    aitoff: Aitoff
+    winkel3: Winkel3
+    lcc: LCC
+
+
+module.exports = {
+    Proj
+    proj
+}

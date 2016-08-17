@@ -16,7 +16,20 @@
     License along with this library. If not, see <http://www.gnu.org/licenses/>.
 ###
 
+$ = require 'jquery'
+Raphael = require 'raphael'
+
+{warn, type} = require '../utils'
+View = require './view'
+Proj = require './proj'
+MapLayer = require './maplayer'
+BBox = require './bbox'
+{LonLat} = require './lonlat'
+parsecss = require './parsecss'
+
 class Kartograph
+    __mapCache = {}
+
     constructor: (container, width, height) ->
         @container = cnt = $(container)
         width ?= cnt.width()
@@ -77,9 +90,9 @@ class Kartograph
         @_loadMapDeferred = def
         @_lastMapUrl = mapurl # store last map url for map cache
 
-        if @cacheMaps and kartograph.__mapCache[mapurl]?
+        if @cacheMaps and __mapCache[mapurl]?
             # use map from cache
-            @_mapLoaded kartograph.__mapCache[mapurl]
+            @_mapLoaded __mapCache[mapurl]
         else
             # load map from url
             $.ajax
@@ -101,8 +114,8 @@ class Kartograph
     _mapLoaded: (xml) ->
         if @cacheMaps
             # cache map svg (as string)
-            kartograph.__mapCache ?= {}
-            kartograph.__mapCache[@_lastMapUrl] = xml
+            __mapCache ?= {}
+            __mapCache[@_lastMapUrl] = xml
 
         try
             xml = $(xml) # if $.browser.msie
@@ -143,20 +156,20 @@ class Kartograph
         @layerIds ?= []
         @layers ?= {}
 
-        if not @paper?
-            @paper = @createSVGLayer()
+        @paper = @createSVGLayer() if not @paper?
 
         src_id = id
-        if __type(opts) == 'object'
+        if type(opts) == 'object'
             layer_id = opts.name
             path_id = opts.key
             titles = opts.title
         else
             opts = {}
 
-        layer_paper = @paper
-        if opts.add_svg_layer
-            layer_paper = @createSVGLayer()
+        layer_paper = if opts.add_svg_layer
+            @createSVGLayer()
+        else
+            @paper
 
         layer_id ?= src_id
         svgLayer = $('#'+src_id, @svgSrc)
@@ -194,7 +207,7 @@ class Kartograph
             # add event handlers
             checkEvents = ['click', 'mouseenter', 'mouseleave', 'dblclick', 'mousedown', 'mouseup', 'mouseover', 'mouseout']
             for evt in checkEvents
-                if __type(opts[evt]) == 'function'
+                if type(opts[evt]) == 'function'
                     layer.on evt, opts[evt]
             if opts.tooltips?
                 layer.tooltips opts.tooltips
@@ -217,7 +230,7 @@ class Kartograph
     getLayerPath: (layer_id, path_id) ->
         layer = @getLayer layer_id
         if layer?
-            if __type(path_id) == 'object'
+            if type(path_id) == 'object'
                 return layer.getPaths(path_id)[0]
             else
                 return layer.getPath path_id
@@ -243,7 +256,7 @@ class Kartograph
 
         for id, paths of @layers[layer_id].pathsById
             for path in paths
-                if __type(duration) == "function"
+                if type(duration) == "function"
                     dur = duration(path.data)
                 else
                     dur = duration
@@ -268,11 +281,10 @@ class Kartograph
         w ?= cnt.width()
         h ?= cnt.height()
         @viewport = vp = new BBox 0,0,w,h
-        if @paper?
-            @paper.setSize vp.width, vp.height
+        @paper.setSize vp.width, vp.height if @paper?
         # update size for other svg layers as well
-        for id,layer of @layers
-            if layer.paper? and layer.paper != @paper
+        for id, layer of @layers
+            if layer.paper? and layer.paper isnt @paper
                 layer.paper.setSize vp.width, vp.height
         padding = @opts.padding ? 0
         halign = @opts.halign ? 'center'
@@ -328,7 +340,7 @@ class Kartograph
                 url: url
                 dataType: 'text'
                 success: (resp) =>
-                    @styles = kartograph.parsecss resp
+                    @styles = parsecss resp
                     callback()
                 error: (a,b,c) ->
                     warn 'error while loading '+url, a,b,c
@@ -374,16 +386,4 @@ class Kartograph
         if layer?
             layer.style prop, value, duration, delay
 
-
-K = kartograph
-
-root.kartograph = (container, width, height) ->
-    new Kartograph container, width, height
-
-kartograph.map = (container, width, height) ->
-    new Kartograph container, width, height
-
-
-kartograph.__mapCache = {} # will store svg files
-
-$.extend root.kartograph, K
+module.exports = Kartograph

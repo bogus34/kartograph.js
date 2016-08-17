@@ -16,6 +16,9 @@
     License along with this library. If not, see <http://www.gnu.org/licenses/>.
 ###
 
+{type} = require '../utils'
+MapLayerPath = require './maplayerpath'
+
 class EventContext
     constructor: (@type, @cb, @layer) ->
     handle: (e) =>
@@ -31,11 +34,10 @@ class MapLayer
         @map = map
         @filter = filter
 
-
     addPath: (svg_path, titles) ->
         @paths ?= []
         layerPath = new MapLayerPath(svg_path, @id, this, titles)
-        if __type(@filter) == 'function'
+        if type(@filter) == 'function'
             if @filter(layerPath.data) == false
                 layerPath.remove()
                 return
@@ -52,7 +54,7 @@ class MapLayer
     getPath: (id) -> @pathsById[id][0] if @hasPath id
 
     getPaths: (query) ->
-        return [] unless __type(query) == 'object'
+        return [] unless type(query) == 'object'
         matches = []
         for path in @paths
             match = true
@@ -78,11 +80,11 @@ class MapLayer
         undefined
 
     style: (props, value, duration, delay) ->
-        if __type(props) == "string"
+        if type(props) == "string"
             key = props
             props = {}
             props[key] = value
-        else if __type(props) == "object"
+        else if type(props) == "object"
             delay = duration
             duration = value
 
@@ -160,8 +162,8 @@ class MapLayer
         this
 
 resolve = (prop, data) ->
-    if __type(prop) == 'function'
+    if type(prop) == 'function'
         return prop data
     return prop
 
-map_layer_path_uid = 0
+module.exports = MapLayer

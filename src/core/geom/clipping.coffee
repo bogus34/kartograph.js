@@ -16,9 +16,6 @@
     License along with this library. If not, see <http://www.gnu.org/licenses/>.
 ###
 
-kartograph.geom ?= {}
-kartograph.geom.clipping ?= {}
-
 class CohenSutherland
     INSIDE = 0
     LEFT = 1
@@ -81,4 +78,4 @@ class CohenSutherland
 
         if accept then [x0, y0, x1, y1] else null
 
-kartograph.geom.clipping.CohenSutherland = CohenSutherland
+module.exports = {CohenSutherland}

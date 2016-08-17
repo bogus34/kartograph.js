@@ -18,7 +18,6 @@
 
 # concept slightly borrowed from Mike Bostock's d3
 
-
 class Scale
     ### scales map values to [0..1] ###
     constructor: (domain=[0,1], prop=null, filter=null) ->

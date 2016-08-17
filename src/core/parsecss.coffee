@@ -48,7 +48,7 @@
 
 ###
 
-kartograph.parsecss = (str, callback) ->
+parsecss = (str, callback) ->
     ret = {}
     str = munge(str)
     for css in str.split '`b%'
@@ -103,3 +103,5 @@ restore = (str) ->
     while match = REmunged.exec(str)
         str = str.replace(REmunged, munged[match[1]])
     str.trim()
+
+module.exports = parsecss
