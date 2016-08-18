@@ -1,3 +1,8 @@
+### 0.9.0
+* forked be Alexander Bogdanov https://github.com/bogus34/kartograph.js
+* fixed to be compiled with Webpack
+* added pan-zoom functionality
+
 ### 0.8.7
 * fixed exposure of global classes
 

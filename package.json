@@ -1,7 +1,8 @@
 {
   "name": "kartograph-js",
   "description": "JavaScript library for SVG mapping",
-  "version": "0.8.7",
+  "version": "0.9.0",
+  "license": "LGPL",
   "author": "Gregor Aisch",
   "filename": "kartograph.js",
   "homepage": "http://kartograph.org",
@@ -11,11 +12,7 @@
     "raphael"
   ],
   "maintainers": [
-    {
-      "name": "Gregor Aisch",
-      "email": "mail@driven-by-data.net",
-      "web": "http://driven-by-data.net"
-    }
+    "Alexander Bogdanov <andorn@gmail.com>"
   ],
   "bugs": "https://github.com/kartograph/kartograph.js/issues",
   "repositories": [
