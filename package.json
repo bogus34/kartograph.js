@@ -30,10 +30,11 @@
     "build": "npm run dev:build && npm run production:build"
   },
   "devDependencies": {
+    "coffee-loader": "^0.7.2",
+    "coffee-script": "~1.11.0",
+    "debug": "^2.2.0",
     "jquery": "~3.1.0",
     "raphael": "~2.x",
-    "coffee-loader": "^0.7.2",
-    "coffee-script": "~1.10.0",
     "uglify-js": "2.x",
     "webpack": "^1.13.1"
   },

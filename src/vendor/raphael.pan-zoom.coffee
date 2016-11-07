@@ -1,9 +1,9 @@
 EventEmitter = require 'events'
+debug = require('debug')('raphael-pan-zoom')
 
 findPos = (obj) ->
     posX = obj.offsetLeft
     posY = obj.offsetTop
-    posArray = undefined
     while obj.offsetParent
         if obj == document.getElementsByTagName('body')[0]
             break
@@ -11,16 +11,11 @@ findPos = (obj) ->
             posX = posX + obj.offsetParent.offsetLeft
             posY = posY + obj.offsetParent.offsetTop
             obj = obj.offsetParent
-    posArray = [
-      posX
-      posY
-    ]
-    posArray
+    [posX, posY]
 
 getRelativePosition = (e, obj) ->
     x = undefined
     y = undefined
-    pos = undefined
     if e.pageX or e.pageY
         x = e.pageX
         y = e.pageY
@@ -63,7 +58,7 @@ class PanZoom extends EventEmitter
         @currZoom = @settings.initialZoom
         @currPos = @settings.initialPosition
 
-        @repaint()
+        @repaint(true)
 
         if @container.attachEvent
             #if IE (and Opera depending on user setting)
@@ -77,6 +72,8 @@ class PanZoom extends EventEmitter
             @container.addEventListener 'mouseup', @handleMouseUp, false
 
     repaint: (force) ->
+        debug 'repaint zoom: %s, pos: %o', @currZoom, @currPos
+
         newPos =
             x: @currPos.x + @deltaX
             y: @currPos.y + @deltaY
@@ -94,7 +91,11 @@ class PanZoom extends EventEmitter
         else if newPos.y > @paper.height * @currZoom * @settings.zoomStep
             newPos.y = @paper.height * @currZoom * @settings.zoomStep
 
-        return false if not force and newPos.x is @currPos.x and newPos.y is @currPos.y
+        debug 'new pos: %o, new size: %o', newPos, {width: newWidth, height: newHeight}
+
+        return false if not force and
+            newPos.x is @currPos.x and
+            newPos.y is @currPos.y
 
         @currPos = newPos
         @paper.setViewBox @currPos.x, @currPos.y, newWidth, newHeight

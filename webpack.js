@@ -31,9 +31,17 @@ if (!minimize) {
 }
 
 if (minimize) {
+    var dedup = new webpack.optimize.DedupePlugin();
     var ujs = new webpack.optimize.UglifyJsPlugin({
-        compress: {warnings: false},
+        compress: {
+            warnings: false,
+            drop_debugger: true,
+            dead_code: true,
+            unused: true
+        },
         sourceMap: false});
+
+    config.plugins.push(dedup);
     config.plugins.push(ujs);
 }
 

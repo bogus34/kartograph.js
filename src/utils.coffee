@@ -22,7 +22,8 @@ type = do ->
     ported from jQuery's $.type
     ###
     classToType = {}
-    for name in "Boolean Number String Function Array Date RegExp Undefined Null".split(" ")
+    for name in ["Boolean", "Number", "String", "Function", "Array", "Date",
+        "RegExp", "Undefined", "Null"]
         classToType["[object " + name + "]"] = name.toLowerCase()
 
     (obj) ->

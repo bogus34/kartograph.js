@@ -32,19 +32,19 @@ class BBox
     constructor: (left=0, top=0, width=null, height=null) ->
         if width == null
             @xmin = Number.MAX_VALUE
-            @xmax = Number.MAX_VALUE*-1
+            @xmax = -Number.MAX_VALUE
         else
             @xmin = @left = left
             @xmax = @right = left + width
             @width = width
+
         if height == null
             @ymin = Number.MAX_VALUE
-            @ymax = Number.MAX_VALUE*-1
+            @ymax = -Number.MAX_VALUE
         else
             @ymin = @top = top
             @ymax = @bottom = height + top
             @height = height
-        return
 
     update: (x, y) ->
         if not y?

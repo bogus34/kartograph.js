@@ -26,110 +26,47 @@ MapLayer = require './maplayer'
 BBox = require './bbox'
 {LonLat} = require './lonlat'
 parsecss = require './parsecss'
+MapLoader = require './maploader'
 
 class Kartograph
-    __mapCache = {}
-
     constructor: (container, width, height) ->
-        @container = cnt = $(container)
-        width ?= cnt.width()
-        height ?= cnt.height()
-        if height == 0
-            height = 'auto'
+        @container = $(container)
         @size =
-            h: height
-            w: width
+            h: height or @container.height() or 'auto'
+            w: width or @container.width()
         @markers = []
         @pathById = {}
+        @loader = null
+
         @container.addClass 'kartograph'
 
-    createSVGLayer: (id) ->
-        @_layerCnt ?= 0
-        lid = @_layerCnt++
-        vp = @viewport
-        cnt = @container
-        paper = Raphael cnt[0], vp.width, vp.height
-        panZoom = paper.panzoom initialZoom: @opts.zoom
-        panZoom.enable()
-        svg = $ paper.canvas
-        svg.css
-            position: 'absolute'
-            top: '0px'
-            left: '0px'
-            'z-index': lid+5
-
-        if cnt.css('position') == 'static'
-            cnt.css
-                position: 'relative'
-                height: vp.height+'px'
-
-        svg.addClass id
-        paper
-
-    createHTMLLayer: (id) ->
-        vp = @viewport
-        cnt = @container
-        @_layerCnt ?= 0
-        lid = @_layerCnt++
-        div = $ "<div class='layer #{id}' />"
-        div.css
-            position: 'absolute'
-            top: '0px'
-            left: '0px'
-            width: vp.width+'px'
-            height: vp.height+'px'
-            'z-index': lid+5
-        cnt.append div
-        div
-
-    load: (mapurl, callback, opts) ->
-        # load svg map
-        def = $.Deferred()
+    load: (resolver, callback, opts) ->
         @clear()
-        @opts = opts ? {}
-        @opts.zoom ?= 1
-        @mapLoadCallback = callback
-        @_loadMapDeferred = def
-        @_lastMapUrl = mapurl # store last map url for map cache
+        if @paper?
+            $(@paper.canvas).remove()
+            @paper = undefined
 
-        if @cacheMaps and __mapCache[mapurl]?
-            # use map from cache
-            @_mapLoaded __mapCache[mapurl]
-        else
-            # load map from url
-            $.ajax
-                url: mapurl
-                dataType: "text"
-                success: @_mapLoaded
-                context: this
-                error: (a, b, c) -> warn a, b, c
-        return def.promise()
+        @loader = new MapLoader resolver
+        pan = opts.pan or [0, 0]
+        zoom = opts.zoom or 1
+        @currentUrl = null
 
-    loadMap: () -> @load.apply @, arguments
+        @reload pan, zoom, opts, callback
 
-    setMap: (svg, opts) ->
-        @opts = opts ? {}
-        @opts.zoom ?= 1
-        @_lastMapUrl = 'string'
-        @_mapLoaded svg
+    reload: (pan, zoom, opts, callback) ->
+        @loader.load pan, zoom, (err, url, svg) =>
+            if err
+                warn err
+            else if @currentUrl isnt url
+                @currentUrl = url
+                @clear()
+                @fragmentLoaded(svg, opts, callback)
 
-    _mapLoaded: (xml) ->
-        if @cacheMaps
-            # cache map svg (as string)
-            __mapCache ?= {}
-            __mapCache[@_lastMapUrl] = xml
+    fragmentLoaded: (svg, opts, callback) ->
+        @svgSrc = svg
+        $view = $('view', svg) # use first view
 
-        try
-            xml = $(xml) # if $.browser.msie
-        catch err
-            warn 'something went horribly wrong while parsing svg'
-            @_loadMapDeferred.reject('could not parse svg')
-            return
-
-        @svgSrc = xml
-        $view = $('view', xml) # use first view
-
-        if not @paper?
+        if not @viewport?
             w = @size.w
             h = @size.h
             if h == 'auto'
@@ -137,22 +74,22 @@ class Kartograph
                 h = w / ratio
             @viewport = new BBox 0, 0, w, h
 
+        @paper ?= @createSVGLayer(null, opts)
+        @paper.panzoom()?.on 'afterApplyZoom', (val, _, panzoom) =>
+            @reload panzoom.getCurrentZoom(), panzoom.getCurrentPosition(), opts, callback
+        @paper.panzoom()?.on 'afterApplyPan', (dx, dy, panzoom) =>
+            @reload panzoom.getCurrentZoom(), panzoom.getCurrentPosition(), opts, callback
+
         vp = @viewport
         @viewAB = AB = View.fromXML $view[0]
-        padding = @opts.padding ? 0
-        halign = @opts.halign ? 'center'
-        valign = @opts.valign ? 'center'
+        padding = opts.padding ? 0
+        halign = opts.halign ? 'center'
+        valign = opts.valign ? 'center'
         @viewBC = new View AB.asBBox(),vp.width,vp.height, padding, halign, valign
 
-        # Using PanZoom instead
-        # zoom = @opts.zoom ? 1
-        # @viewBC = new View @viewAB.asBBox(), vp.width*zoom, vp.height*zoom, padding,halign,valign
-
         @proj = kartograph.Proj.fromXML $('proj', $view)[0]
-        if @mapLoadCallback?
-            @mapLoadCallback this
-        if @_loadMapDeferred?
-            @_loadMapDeferred.resolve this
+
+        callback? this
 
     addLayer: (id, opts={}) ->
         ###
@@ -161,29 +98,22 @@ class Kartograph
         @layerIds ?= []
         @layers ?= {}
 
-        @paper = @createSVGLayer() if not @paper?
-
         src_id = id
-        if type(opts) == 'object'
+        if type(opts) is 'object'
             layer_id = opts.name
             path_id = opts.key
             titles = opts.title
         else
             opts = {}
 
-        layer_paper = if opts.add_svg_layer
-            @createSVGLayer()
-        else
-            @paper
-
         layer_id ?= src_id
         svgLayer = $('#'+src_id, @svgSrc)
 
         if svgLayer.length == 0
-            # warn 'didn\'t find any paths for layer "'+src_id+'"'
+            warn "didn't find any paths for layer \"#{src_id}\""
             return
 
-        layer = new MapLayer(layer_id, path_id, this, opts.filter, layer_paper)
+        layer = new MapLayer(layer_id, path_id, this, opts.filter, @paper)
 
         $paths = $('*', svgLayer[0])
 
@@ -227,27 +157,50 @@ class Kartograph
             setTimeout nextPaths, 0
         else
             nextPaths()
+
         this
 
-    getLayer: (layer_id) ->
-        ### returns a map layer ###
-        if not @layers[layer_id]?
-            warn 'could not find layer ' + layer_id
-            return null
-        @layers[layer_id]
+    createSVGLayer: (id, opts = {}) ->
+        @_layerCnt ?= 0
+        lid = @_layerCnt++
+        vp = @viewport
+        cnt = @container
+        paper = Raphael cnt[0], vp.width, vp.height
+        panZoom = paper.panzoom initialZoom: (opts.zoom or 1)
+        panZoom.enable()
 
-    getLayerPath: (layer_id, path_id) ->
-        layer = @getLayer layer_id
-        if layer?
-            if type(path_id) == 'object'
-                return layer.getPaths(path_id)[0]
-            else
-                return layer.getPath path_id
+        svg = $ paper.canvas
+        svg.css
+            position: 'absolute'
+            top: '0px'
+            left: '0px'
+            'z-index': lid+5
 
-    onLayerEvent: (event, callback, layerId) ->
-        # DEPRECATED!
-        @getLayer(layerId).on event, callback
-        this
+        if cnt.css('position') == 'static'
+            cnt.css
+                position: 'relative'
+                height: vp.height+'px'
+
+        svg.addClass id
+
+        paper
+
+    createHTMLLayer: (id) ->
+        vp = @viewport
+        cnt = @container
+        @_layerCnt ?= 0
+        lid = @_layerCnt++
+        div = $ "<div class='layer #{id}' />"
+        div.css
+            position: 'absolute'
+            top: '0px'
+            left: '0px'
+            width: vp.width+'px'
+            height: vp.height+'px'
+            'z-index': lid+5
+        cnt.append div
+
+        div
 
     addMarker: (marker) ->
         @markers.push(marker)
@@ -259,22 +212,23 @@ class Kartograph
             marker.clear()
         @markers = []
 
-    fadeIn: (opts = {}) ->
-        layer_id = opts.layer ? @layerIds[@layerIds.length-1]
-        duration = opts.duration ? 500
+    # fadeIn: (opts = {}) ->
+    #     layer_id = opts.layer ? @layerIds[@layerIds.length-1]
+    #     duration = opts.duration ? 500
 
-        for id, paths of @layers[layer_id].pathsById
-            for path in paths
-                if type(duration) == "function"
-                    dur = duration(path.data)
-                else
-                    dur = duration
-                path.svgPath.attr 'opacity',0
-                path.svgPath.animate {opacity:1}, dur
+    #     for id, paths of @layers[layer_id].pathsById
+    #         for path in paths
+    #             if type(duration) == "function"
+    #                 dur = duration(path.data)
+    #             else
+    #                 dur = duration
+    #             path.svgPath.attr 'opacity',0
+    #             path.svgPath.animate {opacity:1}, dur
 
-    ###
-        end of public API
-    ###
+
+    ##
+    # end of public API
+    ##
 
     loadCoastline: ->
         $.ajax
@@ -336,9 +290,11 @@ class Kartograph
                 sg.remove()
             @symbolGroups = []
 
-        if @paper?
-            $(@paper.canvas).remove()
-            @paper = undefined
+        # if @paper?
+        #     $(@paper.canvas).remove()
+        #     @paper = undefined
+
+        @svgSrc = null
 
     loadCSS: (url, callback) ->
         ###
