@@ -177,22 +177,22 @@ var kartograph =
 	      }
 	      this.viewport = new BBox(0, 0, w, h);
 	    }
-	    if (this.paper == null) {
+	    if (!this.paper) {
 	      this.paper = this.createSVGLayer(null, opts);
-	    }
-	    if ((ref1 = this.paper.panzoom()) != null) {
-	      ref1.on('afterApplyZoom', (function(_this) {
-	        return function(val, _, panzoom) {
-	          return _this.reload(panzoom.getCurrentZoom(), panzoom.getCurrentPosition(), opts, callback);
-	        };
-	      })(this));
-	    }
-	    if ((ref2 = this.paper.panzoom()) != null) {
-	      ref2.on('afterApplyPan', (function(_this) {
-	        return function(dx, dy, panzoom) {
-	          return _this.reload(panzoom.getCurrentZoom(), panzoom.getCurrentPosition(), opts, callback);
-	        };
-	      })(this));
+	      if ((ref1 = this.paper.panzoom()) != null) {
+	        ref1.on('afterApplyZoom', (function(_this) {
+	          return function(val, _, panzoom) {
+	            return _this.reload(panzoom.getCurrentPosition(), panzoom.getCurrentZoom(), opts, callback);
+	          };
+	        })(this));
+	      }
+	      if ((ref2 = this.paper.panzoom()) != null) {
+	        ref2.on('afterApplyPan', (function(_this) {
+	          return function(dx, dy, panzoom) {
+	            return _this.reload(panzoom.getCurrentPosition(), panzoom.getCurrentZoom(), opts, callback);
+	          };
+	        })(this));
+	      }
 	    }
 	    vp = this.viewport;
 	    this.viewAB = AB = View.fromXML($view[0]);
@@ -237,38 +237,41 @@ var kartograph =
 	    }
 	    layer = new MapLayer(layer_id, path_id, this, opts.filter, this.paper);
 	    $paths = $('*', svgLayer[0]);
+	    if ($paths.length > 0) {
+	      this.layers[layer_id] = layer;
+	      this.layerIds.push(layer_id);
+	    }
 	    rows = $paths.length;
 	    chunkSize = (ref1 = opts.chunks) != null ? ref1 : rows;
 	    iter = 0;
-	    nextPaths = function() {
-	      var base, i, j, prop, ref2, ref3, val;
-	      base = chunkSize * iter;
-	      for (i = j = 0, ref2 = chunkSize; 0 <= ref2 ? j < ref2 : j > ref2; i = 0 <= ref2 ? ++j : --j) {
-	        if (base + i < rows) {
-	          layer.addPath($paths.get(base + i), titles);
+	    nextPaths = (function(_this) {
+	      return function() {
+	        var base, i, j, prop, ref2, ref3, val;
+	        base = chunkSize * iter;
+	        for (i = j = 0, ref2 = chunkSize; 0 <= ref2 ? j < ref2 : j > ref2; i = 0 <= ref2 ? ++j : --j) {
+	          if (base + i < rows) {
+	            layer.addPath($paths.get(base + i), titles);
+	          }
 	        }
-	      }
-	      if (opts.styles != null) {
-	        ref3 = opts.styles;
-	        for (prop in ref3) {
-	          val = ref3[prop];
-	          layer.style(prop, val);
+	        if (opts.styles != null) {
+	          ref3 = opts.styles;
+	          for (prop in ref3) {
+	            val = ref3[prop];
+	            layer.style(prop, val);
+	          }
 	        }
-	      }
-	      iter++;
-	      if (iter * chunkSize < rows) {
-	        return setTimeout(nextPaths, 0);
-	      } else {
-	        return moveOn();
-	      }
-	    };
+	        iter++;
+	        if (iter * chunkSize < rows) {
+	          return _this.nextPathTimeout = setTimeout(nextPaths, 0);
+	        } else {
+	          return moveOn();
+	        }
+	      };
+	    })(this);
 	    moveOn = (function(_this) {
 	      return function() {
 	        var checkEvents, evt, j, len;
-	        if (layer.paths.length > 0) {
-	          _this.layers[layer_id] = layer;
-	          _this.layerIds.push(layer_id);
-	        }
+	        _this.nextPathTimeout = null;
 	        checkEvents = ['click', 'mouseenter', 'mouseleave', 'dblclick', 'mousedown', 'mouseup', 'mouseover', 'mouseout'];
 	        for (j = 0, len = checkEvents.length; j < len; j++) {
 	          evt = checkEvents[j];
@@ -290,7 +293,7 @@ var kartograph =
 	      };
 	    })(this);
 	    if (opts.chunks != null) {
-	      setTimeout(nextPaths, 0);
+	      this.nextPathTimeout = setTimeout(nextPaths, 0);
 	    } else {
 	      nextPaths();
 	    }
@@ -457,6 +460,10 @@ var kartograph =
 	
 	  Kartograph.prototype.clear = function() {
 	    var id, j, len, ref1, sg;
+	    if (this.nextPathTimeout) {
+	      clearTimeout(this.nextPathTimeout);
+	      this.nextPathTimeout = null;
+	    }
 	    if (this.layers != null) {
 	      for (id in this.layers) {
 	        this.layers[id].remove();
@@ -14372,6 +14379,9 @@ var kartograph =
 	    removes every path
 	     */
 	    var j, len, path, ref;
+	    if (!this.paths) {
+	      return;
+	    }
 	    ref = this.paths;
 	    for (j = 0, len = ref.length; j < len; j++) {
 	      path = ref[j];
@@ -14954,6 +14964,7 @@ var kartograph =
 	        success: (function(_this) {
 	          return function(result) {
 	            var err;
+	            _this.state = LOADED;
 	            try {
 	              _this.svg = $(result);
 	            } catch (error) {

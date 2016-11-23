@@ -258,7 +258,6 @@ class NaturalEarth extends PseudoCylindrical
         lpphi = @rad(lat*-1)
         phi2 = lpphi * lpphi
         phi4 = phi2 * phi2
-        # console.log phi2,phi4,@A0,@A1,@A2,@A3,@A4
         x = lplam * (@A0 + phi2 * (@A1 + phi2 * (@A2 + phi4 * phi2 * (@A3 + phi2 * @A4)))) * 180 + 500
         y = lpphi * (@B0 + phi2 * (@B1 + phi4 * (@B2 + @B3 * phi2 + @B4 * phi4))) * 180 + 270
         [x,y]

@@ -74,11 +74,12 @@ class Kartograph
                 h = w / ratio
             @viewport = new BBox 0, 0, w, h
 
-        @paper ?= @createSVGLayer(null, opts)
-        @paper.panzoom()?.on 'afterApplyZoom', (val, _, panzoom) =>
-            @reload panzoom.getCurrentZoom(), panzoom.getCurrentPosition(), opts, callback
-        @paper.panzoom()?.on 'afterApplyPan', (dx, dy, panzoom) =>
-            @reload panzoom.getCurrentZoom(), panzoom.getCurrentPosition(), opts, callback
+        unless @paper
+            @paper = @createSVGLayer(null, opts)
+            @paper.panzoom()?.on 'afterApplyZoom', (val, _, panzoom) =>
+                @reload panzoom.getCurrentPosition(), panzoom.getCurrentZoom(), opts, callback
+            @paper.panzoom()?.on 'afterApplyPan', (dx, dy, panzoom) =>
+                @reload panzoom.getCurrentPosition(), panzoom.getCurrentZoom(), opts, callback
 
         vp = @viewport
         @viewAB = AB = View.fromXML $view[0]
@@ -117,11 +118,15 @@ class Kartograph
 
         $paths = $('*', svgLayer[0])
 
+        if $paths.length > 0
+            @layers[layer_id] = layer
+            @layerIds.push layer_id
+
         rows = $paths.length
         chunkSize = opts.chunks ? rows
         iter = 0
 
-        nextPaths = () ->
+        nextPaths = =>
             base = (chunkSize) * iter
             for i in [0...chunkSize]
                 if base + i < rows
@@ -131,14 +136,12 @@ class Kartograph
                     layer.style prop, val
             iter++
             if iter * chunkSize < rows
-                setTimeout nextPaths, 0
+                @nextPathTimeout = setTimeout nextPaths, 0
             else
                 moveOn()
 
-        moveOn = () =>
-            if layer.paths.length > 0
-                @layers[layer_id] = layer
-                @layerIds.push layer_id
+        moveOn = =>
+            @nextPathTimeout = null
 
             # add event handlers
             checkEvents = ['click', 'mouseenter', 'mouseleave', 'dblclick', 'mousedown', 'mouseup', 'mouseover', 'mouseout']
@@ -154,7 +157,7 @@ class Kartograph
                 opts.done()
 
         if opts.chunks?
-            setTimeout nextPaths, 0
+            @nextPathTimeout = setTimeout nextPaths, 0
         else
             nextPaths()
 
@@ -279,6 +282,10 @@ class Kartograph
                 sg.remove()
 
     clear: ->
+        if @nextPathTimeout
+            clearTimeout @nextPathTimeout
+            @nextPathTimeout = null
+
         if @layers?
             for id of @layers
                 @layers[id].remove()

@@ -28,6 +28,7 @@ class MapFragment
                 url: @url
                 dataType: "text"
                 success: (result) =>
+                    @state = LOADED
                     try
                         @svg = $(result)
                     catch err

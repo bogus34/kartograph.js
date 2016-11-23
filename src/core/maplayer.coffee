@@ -83,6 +83,7 @@ class MapLayer
         ###
         removes every path
         ###
+        return unless @paths
         path.remove() for path in @paths
         undefined
 
