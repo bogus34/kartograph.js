@@ -101,7 +101,8 @@ var kartograph =
 	    You should have received a copy of the GNU Lesser General Public
 	    License along with this library. If not, see <http://www.gnu.org/licenses/>.
 	 */
-	var $, BBox, Kartograph, LonLat, MapLayer, MapLoader, Proj, Raphael, View, parsecss, ref, type, warn;
+	var $, BBox, Kartograph, LonLat, MapLayer, MapLoader, Proj, Raphael, View, parsecss, ref, type, warn,
+	  indexOf = [].indexOf || function(item) { for (var i = 0, l = this.length; i < l; i++) { if (i in this && this[i] === item) return i; } return -1; };
 	
 	$ = __webpack_require__(/*! jquery */ 2);
 	
@@ -138,6 +139,9 @@ var kartograph =
 	
 	  Kartograph.prototype.load = function(resolver, callback, opts) {
 	    var pan, zoom;
+	    if (opts == null) {
+	      opts = {};
+	    }
 	    this.clear();
 	    if (this.paper != null) {
 	      $(this.paper.canvas).remove();
@@ -146,18 +150,27 @@ var kartograph =
 	    this.loader = new MapLoader(resolver);
 	    pan = opts.pan || [0, 0];
 	    zoom = opts.zoom || 1;
-	    this.currentUrl = null;
+	    this.currentUrls = [];
+	    this.currentZoomLevel = null;
 	    return this.reload(pan, zoom, opts, callback);
 	  };
 	
 	  Kartograph.prototype.reload = function(pan, zoom, opts, callback) {
 	    return this.loader.load(pan, zoom, (function(_this) {
-	      return function(err, url, svg) {
+	      return function(err, url, zoomLevel, svg) {
 	        if (err) {
-	          return warn(err);
-	        } else if (_this.currentUrl !== url) {
-	          _this.currentUrl = url;
+	          warn(err);
+	          return;
+	        }
+	        if (_this.currentZoomLevel !== zoomLevel) {
+	          console.log('>>> clear');
 	          _this.clear();
+	          _this.currentZoomLevel = zoomLevel;
+	          _this.currentUrls = [];
+	        }
+	        if (indexOf.call(_this.currentUrls, url) < 0) {
+	          console.log('>>> add new fragment');
+	          _this.currentUrls.push(url);
 	          return _this.fragmentLoaded(svg, opts, callback);
 	        }
 	      };
@@ -205,7 +218,7 @@ var kartograph =
 	  };
 	
 	  Kartograph.prototype.addLayer = function(id, opts) {
-	    var $paths, chunkSize, iter, layer, layer_id, moveOn, nextPaths, path_id, ref1, rows, src_id, svgLayer, titles;
+	    var $paths, base1, chunkSize, iter, layer, layer_id, moveOn, nextPaths, path_id, ref1, rows, src_id, svgLayer, titles;
 	    if (opts == null) {
 	      opts = {};
 	    }
@@ -238,7 +251,10 @@ var kartograph =
 	    layer = new MapLayer(layer_id, path_id, this, opts.filter, this.paper);
 	    $paths = $('*', svgLayer[0]);
 	    if ($paths.length > 0) {
-	      this.layers[layer_id] = layer;
+	      if ((base1 = this.layers)[layer_id] == null) {
+	        base1[layer_id] = [];
+	      }
+	      this.layers[layer_id].push(layer);
 	      this.layerIds.push(layer_id);
 	    }
 	    rows = $paths.length;
@@ -312,9 +328,7 @@ var kartograph =
 	    vp = this.viewport;
 	    cnt = this.container;
 	    paper = Raphael(cnt[0], vp.width, vp.height);
-	    panZoom = paper.panzoom({
-	      initialZoom: opts.zoom || 1
-	    });
+	    panZoom = paper.panzoom(this.panZoomOptions(opts));
 	    panZoom.enable();
 	    svg = $(paper.canvas);
 	    svg.css({
@@ -371,6 +385,13 @@ var kartograph =
 	    return this.markers = [];
 	  };
 	
+	  Kartograph.prototype.zoom = function(steps) {
+	    if (!this.paper) {
+	      return;
+	    }
+	    return this.paper.panzoom().zoomIn(steps);
+	  };
+	
 	  Kartograph.prototype.loadCoastline = function() {
 	    return $.ajax({
 	      url: 'coastline.json',
@@ -384,7 +405,7 @@ var kartograph =
 	    /*
 	    forces redraw of every layer
 	     */
-	    var cnt, halign, id, j, layer, len, padding, ref1, ref2, ref3, ref4, ref5, ref6, results, sg, valign, vp, zoom;
+	    var cnt, halign, j, len, padding, ref1, ref2, ref3, ref4, results, sg, valign, vp, zoom;
 	    cnt = this.container;
 	    if (w == null) {
 	      w = cnt.width();
@@ -396,28 +417,28 @@ var kartograph =
 	    if (this.paper != null) {
 	      this.paper.setSize(vp.width, vp.height);
 	    }
-	    ref1 = this.layers;
-	    for (id in ref1) {
-	      layer = ref1[id];
-	      if ((layer.paper != null) && layer.paper !== this.paper) {
-	        layer.paper.setSize(vp.width, vp.height);
-	      }
-	    }
-	    padding = (ref2 = this.opts.padding) != null ? ref2 : 0;
-	    halign = (ref3 = this.opts.halign) != null ? ref3 : 'center';
-	    valign = (ref4 = this.opts.valign) != null ? ref4 : 'center';
+	    this.forEachLayer((function(_this) {
+	      return function(layer) {
+	        if ((layer.paper != null) && layer.paper !== _this.paper) {
+	          return layer.paper.setSize(vp.width, vp.height);
+	        }
+	      };
+	    })(this));
+	    padding = (ref1 = this.opts.padding) != null ? ref1 : 0;
+	    halign = (ref2 = this.opts.halign) != null ? ref2 : 'center';
+	    valign = (ref3 = this.opts.valign) != null ? ref3 : 'center';
 	    zoom = this.opts.zoom;
 	    this.viewBC = new View(this.viewAB.asBBox(), vp.width * zoom, vp.height * zoom, padding, halign, valign);
-	    ref5 = this.layers;
-	    for (id in ref5) {
-	      layer = ref5[id];
-	      layer.setView(this.viewBC);
-	    }
+	    this.forEachLayer((function(_this) {
+	      return function(layer) {
+	        return layer.setView(_this.viewBC);
+	      };
+	    })(this));
 	    if (this.symbolGroups != null) {
-	      ref6 = this.symbolGroups;
+	      ref4 = this.symbolGroups;
 	      results = [];
-	      for (j = 0, len = ref6.length; j < len; j++) {
-	        sg = ref6[j];
+	      for (j = 0, len = ref4.length; j < len; j++) {
+	        sg = ref4[j];
 	        results.push(sg.onResize());
 	      }
 	      return results;
@@ -459,18 +480,16 @@ var kartograph =
 	  };
 	
 	  Kartograph.prototype.clear = function() {
-	    var id, j, len, ref1, sg;
+	    var j, len, ref1, sg;
 	    if (this.nextPathTimeout) {
 	      clearTimeout(this.nextPathTimeout);
 	      this.nextPathTimeout = null;
 	    }
-	    if (this.layers != null) {
-	      for (id in this.layers) {
-	        this.layers[id].remove();
-	      }
-	      this.layers = {};
-	      this.layerIds = [];
-	    }
+	    this.forEachLayer(function(layer) {
+	      return layer.remove();
+	    });
+	    this.layers = {};
+	    this.layerIds = [];
 	    if (this.symbolGroups != null) {
 	      ref1 = this.symbolGroups;
 	      for (j = 0, len = ref1.length; j < len; j++) {
@@ -560,6 +579,47 @@ var kartograph =
 	    layer = this.getLayer(layer);
 	    if (layer != null) {
 	      return layer.style(prop, value, duration, delay);
+	    }
+	  };
+	
+	  Kartograph.prototype.panZoomOptions = function(opts) {
+	    var defaultOpts, k;
+	    defaultOpts = {
+	      minZoom: 0,
+	      maxZoom: 19,
+	      zoomStep: 0.1,
+	      initialZoom: 0,
+	      initialPosition: {
+	        x: 0,
+	        y: 0
+	      }
+	    };
+	    for (k in defaultOpts) {
+	      if (k in opts) {
+	        defaultOpts[k] = opts[k];
+	      }
+	    }
+	    return defaultOpts;
+	  };
+	
+	  Kartograph.prototype.forEachLayer = function(fn) {
+	    var id, layer, layers, ref1, results;
+	    if (this.layers) {
+	      ref1 = this.layers;
+	      results = [];
+	      for (id in ref1) {
+	        layers = ref1[id];
+	        results.push((function() {
+	          var j, len, results1;
+	          results1 = [];
+	          for (j = 0, len = layers.length; j < len; j++) {
+	            layer = layers[j];
+	            results1.push(fn(layer));
+	          }
+	          return results1;
+	        })());
+	      }
+	      return results;
 	    }
 	  };
 	
@@ -14894,13 +14954,13 @@ var kartograph =
 	  }
 	
 	  MapLoader.prototype.load = function(pan, zoom, callback) {
-	    var base, url;
-	    url = this.resolver(pan, zoom);
+	    var base, ref, url, zoomLevel;
+	    ref = this.resolver(pan, zoom), url = ref[0], zoomLevel = ref[1];
 	    if ((base = this._cache)[url] == null) {
 	      base[url] = new MapFragment(url);
 	    }
 	    return this._cache[url].load(function(err, svg) {
-	      return callback(err, url, svg);
+	      return callback(err, url, zoomLevel, svg);
 	    });
 	  };
 	

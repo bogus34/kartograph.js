@@ -4,5 +4,6 @@
     map.load(resolver, function(){
         console.log(">>> fragment loaded");
         map.addLayer('countries');
-    }, {zoom: 5});
+    });
+    window.map = map;
 })();

@@ -40,7 +40,7 @@ class Kartograph
 
         @container.addClass 'kartograph'
 
-    load: (resolver, callback, opts) ->
+    load: (resolver, callback, opts = {}) ->
         @clear()
         if @paper?
             $(@paper.canvas).remove()
@@ -49,17 +49,26 @@ class Kartograph
         @loader = new MapLoader resolver
         pan = opts.pan or [0, 0]
         zoom = opts.zoom or 1
-        @currentUrl = null
+        @currentUrls = []
+        @currentZoomLevel = null
 
         @reload pan, zoom, opts, callback
 
     reload: (pan, zoom, opts, callback) ->
-        @loader.load pan, zoom, (err, url, svg) =>
+        @loader.load pan, zoom, (err, url, zoomLevel, svg) =>
             if err
                 warn err
-            else if @currentUrl isnt url
-                @currentUrl = url
+                return
+
+            if @currentZoomLevel isnt zoomLevel
+                console.log '>>> clear'
                 @clear()
+                @currentZoomLevel = zoomLevel
+                @currentUrls = []
+
+            if url not in @currentUrls
+                console.log '>>> add new fragment'
+                @currentUrls.push url
                 @fragmentLoaded(svg, opts, callback)
 
     fragmentLoaded: (svg, opts, callback) ->
@@ -119,7 +128,8 @@ class Kartograph
         $paths = $('*', svgLayer[0])
 
         if $paths.length > 0
-            @layers[layer_id] = layer
+            @layers[layer_id] ?= []
+            @layers[layer_id].push layer
             @layerIds.push layer_id
 
         rows = $paths.length
@@ -169,7 +179,7 @@ class Kartograph
         vp = @viewport
         cnt = @container
         paper = Raphael cnt[0], vp.width, vp.height
-        panZoom = paper.panzoom initialZoom: (opts.zoom or 1)
+        panZoom = paper.panzoom @panZoomOptions(opts)
         panZoom.enable()
 
         svg = $ paper.canvas
@@ -215,6 +225,10 @@ class Kartograph
             marker.clear()
         @markers = []
 
+    zoom: (steps) ->
+        return unless @paper
+        @paper.panzoom().zoomIn(steps)
+
     # fadeIn: (opts = {}) ->
     #     layer_id = opts.layer ? @layerIds[@layerIds.length-1]
     #     duration = opts.duration ? 500
@@ -249,16 +263,26 @@ class Kartograph
         @viewport = vp = new BBox 0,0,w,h
         @paper.setSize vp.width, vp.height if @paper?
         # update size for other svg layers as well
-        for id, layer of @layers
+
+        # for id, layer of @layers
+        #     if layer.paper? and layer.paper isnt @paper
+        #         layer.paper.setSize vp.width, vp.height
+
+        @forEachLayer (layer) =>
             if layer.paper? and layer.paper isnt @paper
                 layer.paper.setSize vp.width, vp.height
+
+
         padding = @opts.padding ? 0
         halign = @opts.halign ? 'center'
         valign = @opts.valign ? 'center'
         zoom = @opts.zoom
         @viewBC = new View @viewAB.asBBox(),vp.width*zoom,vp.height*zoom, padding,halign,valign
-        for id,layer of @layers
-            layer.setView(@viewBC)
+
+        # for id,layer of @layers
+        #     layer.setView(@viewBC)
+
+        @forEachLayer (layer) => layer.setView(@viewBC)
 
         if @symbolGroups?
             for sg in @symbolGroups
@@ -286,11 +310,15 @@ class Kartograph
             clearTimeout @nextPathTimeout
             @nextPathTimeout = null
 
-        if @layers?
-            for id of @layers
-                @layers[id].remove()
-            @layers = {}
-            @layerIds = []
+        # if @layers?
+        #     for id of @layers
+        #         @layers[id].remove()
+        #     @layers = {}
+        #     @layerIds = []
+
+        @forEachLayer (layer) -> layer.remove()
+        @layers = {}
+        @layerIds = []
 
         if @symbolGroups?
             for sg in @symbolGroups
@@ -357,5 +385,24 @@ class Kartograph
         layer = @getLayer(layer)
         if layer?
             layer.style prop, value, duration, delay
+
+    panZoomOptions: (opts) ->
+        defaultOpts = {
+            minZoom: 0
+            maxZoom: 19
+            zoomStep: 0.1
+            initialZoom: 0
+            initialPosition: { x: 0, y: 0 }
+        }
+
+        defaultOpts[k] = opts[k] for k of defaultOpts when k of opts
+
+        defaultOpts
+
+    forEachLayer: (fn) ->
+        if @layers
+            for id, layers of @layers
+                for layer in layers
+                    fn(layer)
 
 module.exports = Kartograph
