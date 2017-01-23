@@ -49,8 +49,11 @@ class Kartograph
         @loader = new MapLoader resolver
         pan = opts.pan or [0, 0]
         zoom = opts.zoom or 1
+        @urlsByZoomLevel = {}
         @currentUrls = []
         @currentZoomLevel = null
+        @paperByZoomLevel = {}
+        @layersByZoomLevel = {}
 
         @reload pan, zoom, opts, callback
 
@@ -61,13 +64,15 @@ class Kartograph
                 return
 
             if @currentZoomLevel isnt zoomLevel
-                console.log '>>> clear'
                 @clear()
                 @currentZoomLevel = zoomLevel
                 @currentUrls = []
 
+            # if @currentZoomLevel isnt zoomLevel
+            #     @pushCurrentZoomLevel()
+            #     @popZoomLevel(zoomLevel)
+
             if url not in @currentUrls
-                console.log '>>> add new fragment'
                 @currentUrls.push url
                 @fragmentLoaded(svg, opts, callback)
 
@@ -123,14 +128,15 @@ class Kartograph
             warn "didn't find any paths for layer \"#{src_id}\""
             return
 
-        layer = new MapLayer(layer_id, path_id, this, opts.filter, @paper)
-
         $paths = $('*', svgLayer[0])
 
-        if $paths.length > 0
-            @layers[layer_id] ?= []
-            @layers[layer_id].push layer
+        return this unless $paths.length
+
+        layer = if layer_id of @layers
+            @layers[layer_id]
+        else
             @layerIds.push layer_id
+            @layers[layer_id] = new MapLayer(layer_id, path_id, this, opts.filter, @paper)
 
         rows = $paths.length
         chunkSize = opts.chunks ? rows
@@ -262,25 +268,17 @@ class Kartograph
         h ?= cnt.height()
         @viewport = vp = new BBox 0,0,w,h
         @paper.setSize vp.width, vp.height if @paper?
+
         # update size for other svg layers as well
-
-        # for id, layer of @layers
-        #     if layer.paper? and layer.paper isnt @paper
-        #         layer.paper.setSize vp.width, vp.height
-
         @forEachLayer (layer) =>
             if layer.paper? and layer.paper isnt @paper
                 layer.paper.setSize vp.width, vp.height
-
 
         padding = @opts.padding ? 0
         halign = @opts.halign ? 'center'
         valign = @opts.valign ? 'center'
         zoom = @opts.zoom
         @viewBC = new View @viewAB.asBBox(),vp.width*zoom,vp.height*zoom, padding,halign,valign
-
-        # for id,layer of @layers
-        #     layer.setView(@viewBC)
 
         @forEachLayer (layer) => layer.setView(@viewBC)
 
@@ -309,12 +307,6 @@ class Kartograph
         if @nextPathTimeout
             clearTimeout @nextPathTimeout
             @nextPathTimeout = null
-
-        # if @layers?
-        #     for id of @layers
-        #         @layers[id].remove()
-        #     @layers = {}
-        #     @layerIds = []
 
         @forEachLayer (layer) -> layer.remove()
         @layers = {}
@@ -391,7 +383,7 @@ class Kartograph
             minZoom: 0
             maxZoom: 19
             zoomStep: 0.1
-            initialZoom: 0
+            initialZoom: @currentZoomLevel or 0
             initialPosition: { x: 0, y: 0 }
         }
 
@@ -400,9 +392,36 @@ class Kartograph
         defaultOpts
 
     forEachLayer: (fn) ->
-        if @layers
-            for id, layers of @layers
-                for layer in layers
-                    fn(layer)
+        return unless @layers
+        fn(layer) for id, layer of @layers
+        undefined
+
+    pushCurrentZoomLevel: ->
+        return unless @paper and @currentZoomLevel?
+
+        if @nextPathTimeout
+            clearTimeout @nextPathTimeout
+            @nextPathTimeout = null
+
+        @urlsByZoomLevel[@currentZoomLevel] = @currentUrls
+        @paperByZoomLevel[@currentZoomLevel] = @paper
+        @layersByZoomLevel[@currentZoomLevel] = @layers
+        $(@paper.canvas).hide()
+        @currentUrls = null
+        @paper = null
+        @layers = {}
+
+    popZoomLevel: (zoomLevel) ->
+        if @paperByZoomLevel[zoomLevel]
+            @currentUrls = @urlsByZoomLevel[zoomLevel]
+            @paper = @paperByZoomLevel[zoomLevel]
+            @layers = @layersByZoomLevel[zoomLevel]
+            $(@paper.canvas).show()
+        else
+            @currentUrls = []
+            @paper = null
+            @layers = {}
+
+        @currentZoomLevel = zoomLevel
 
 module.exports = Kartograph

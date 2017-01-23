@@ -43,18 +43,27 @@ class MapLayer
 
     addPath: (svg_path, titles) ->
         @paths ?= []
-        layerPath = new MapLayerPath(svg_path, @id, this, titles)
-        if type(@filter) == 'function'
-            if @filter(layerPath.data) == false
-                layerPath.remove()
-                return
 
-        @paths.push(layerPath)
+        # layerPath = new MapLayerPath(svg_path, @id, this, titles)
+        # if type(@filter) == 'function'
+        #     if @filter(layerPath.data) == false
+        #         layerPath.remove()
+        #         return
 
-        if @path_id?
-            @pathsById ?= {}
-            @pathsById[layerPath.data[@path_id]] ?= []
-            @pathsById[layerPath.data[@path_id]].push(layerPath)
+        # @paths.push(layerPath)
+
+        # if @path_id?
+        #     @pathsById ?= {}
+        #     @pathsById[layerPath.data[@path_id]] ?= []
+        #     @pathsById[layerPath.data[@path_id]].push(layerPath)
+
+
+        #
+        # layer path inlining
+        #
+
+        path = @paper.path $(svg_path).attr('d')
+        @paths.push path
 
     hasPath: (id) -> @pathsById? and @pathsById[id]?
     getPathsData: () -> path.data for path in @paths

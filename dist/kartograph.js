@@ -150,8 +150,11 @@ var kartograph =
 	    this.loader = new MapLoader(resolver);
 	    pan = opts.pan || [0, 0];
 	    zoom = opts.zoom || 1;
+	    this.urlsByZoomLevel = {};
 	    this.currentUrls = [];
 	    this.currentZoomLevel = null;
+	    this.paperByZoomLevel = {};
+	    this.layersByZoomLevel = {};
 	    return this.reload(pan, zoom, opts, callback);
 	  };
 	
@@ -163,13 +166,11 @@ var kartograph =
 	          return;
 	        }
 	        if (_this.currentZoomLevel !== zoomLevel) {
-	          console.log('>>> clear');
 	          _this.clear();
 	          _this.currentZoomLevel = zoomLevel;
 	          _this.currentUrls = [];
 	        }
 	        if (indexOf.call(_this.currentUrls, url) < 0) {
-	          console.log('>>> add new fragment');
 	          _this.currentUrls.push(url);
 	          return _this.fragmentLoaded(svg, opts, callback);
 	        }
@@ -218,7 +219,7 @@ var kartograph =
 	  };
 	
 	  Kartograph.prototype.addLayer = function(id, opts) {
-	    var $paths, base1, chunkSize, iter, layer, layer_id, moveOn, nextPaths, path_id, ref1, rows, src_id, svgLayer, titles;
+	    var $paths, chunkSize, iter, layer, layer_id, moveOn, nextPaths, path_id, ref1, rows, src_id, svgLayer, titles;
 	    if (opts == null) {
 	      opts = {};
 	    }
@@ -248,15 +249,11 @@ var kartograph =
 	      warn("didn't find any paths for layer \"" + src_id + "\"");
 	      return;
 	    }
-	    layer = new MapLayer(layer_id, path_id, this, opts.filter, this.paper);
 	    $paths = $('*', svgLayer[0]);
-	    if ($paths.length > 0) {
-	      if ((base1 = this.layers)[layer_id] == null) {
-	        base1[layer_id] = [];
-	      }
-	      this.layers[layer_id].push(layer);
-	      this.layerIds.push(layer_id);
+	    if (!$paths.length) {
+	      return this;
 	    }
+	    layer = layer_id in this.layers ? this.layers[layer_id] : (this.layerIds.push(layer_id), this.layers[layer_id] = new MapLayer(layer_id, path_id, this, opts.filter, this.paper));
 	    rows = $paths.length;
 	    chunkSize = (ref1 = opts.chunks) != null ? ref1 : rows;
 	    iter = 0;
@@ -588,7 +585,7 @@ var kartograph =
 	      minZoom: 0,
 	      maxZoom: 19,
 	      zoomStep: 0.1,
-	      initialZoom: 0,
+	      initialZoom: this.currentZoomLevel || 0,
 	      initialPosition: {
 	        x: 0,
 	        y: 0
@@ -603,24 +600,47 @@ var kartograph =
 	  };
 	
 	  Kartograph.prototype.forEachLayer = function(fn) {
-	    var id, layer, layers, ref1, results;
-	    if (this.layers) {
-	      ref1 = this.layers;
-	      results = [];
-	      for (id in ref1) {
-	        layers = ref1[id];
-	        results.push((function() {
-	          var j, len, results1;
-	          results1 = [];
-	          for (j = 0, len = layers.length; j < len; j++) {
-	            layer = layers[j];
-	            results1.push(fn(layer));
-	          }
-	          return results1;
-	        })());
-	      }
-	      return results;
+	    var id, layer, ref1;
+	    if (!this.layers) {
+	      return;
 	    }
+	    ref1 = this.layers;
+	    for (id in ref1) {
+	      layer = ref1[id];
+	      fn(layer);
+	    }
+	    return void 0;
+	  };
+	
+	  Kartograph.prototype.pushCurrentZoomLevel = function() {
+	    if (!(this.paper && (this.currentZoomLevel != null))) {
+	      return;
+	    }
+	    if (this.nextPathTimeout) {
+	      clearTimeout(this.nextPathTimeout);
+	      this.nextPathTimeout = null;
+	    }
+	    this.urlsByZoomLevel[this.currentZoomLevel] = this.currentUrls;
+	    this.paperByZoomLevel[this.currentZoomLevel] = this.paper;
+	    this.layersByZoomLevel[this.currentZoomLevel] = this.layers;
+	    $(this.paper.canvas).hide();
+	    this.currentUrls = null;
+	    this.paper = null;
+	    return this.layers = {};
+	  };
+	
+	  Kartograph.prototype.popZoomLevel = function(zoomLevel) {
+	    if (this.paperByZoomLevel[zoomLevel]) {
+	      this.currentUrls = this.urlsByZoomLevel[zoomLevel];
+	      this.paper = this.paperByZoomLevel[zoomLevel];
+	      this.layers = this.layersByZoomLevel[zoomLevel];
+	      $(this.paper.canvas).show();
+	    } else {
+	      this.currentUrls = [];
+	      this.paper = null;
+	      this.layers = {};
+	    }
+	    return this.currentZoomLevel = zoomLevel;
 	  };
 	
 	  return Kartograph;
@@ -14352,27 +14372,12 @@ var kartograph =
 	  }
 	
 	  MapLayer.prototype.addPath = function(svg_path, titles) {
-	    var base, layerPath, name;
+	    var path;
 	    if (this.paths == null) {
 	      this.paths = [];
 	    }
-	    layerPath = new MapLayerPath(svg_path, this.id, this, titles);
-	    if (type(this.filter) === 'function') {
-	      if (this.filter(layerPath.data) === false) {
-	        layerPath.remove();
-	        return;
-	      }
-	    }
-	    this.paths.push(layerPath);
-	    if (this.path_id != null) {
-	      if (this.pathsById == null) {
-	        this.pathsById = {};
-	      }
-	      if ((base = this.pathsById)[name = layerPath.data[this.path_id]] == null) {
-	        base[name] = [];
-	      }
-	      return this.pathsById[layerPath.data[this.path_id]].push(layerPath);
-	    }
+	    path = this.paper.path($(svg_path).attr('d'));
+	    return this.paths.push(path);
 	  };
 	
 	  MapLayer.prototype.hasPath = function(id) {
