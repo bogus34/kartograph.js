@@ -146,7 +146,7 @@ class Kartograph
             base = (chunkSize) * iter
             for i in [0...chunkSize]
                 if base + i < rows
-                    layer.addPath $paths.get(base+i), titles
+                    layer.quickAddPath $paths.get(base+i), titles
             if opts.styles?
                 for prop, val of opts.styles
                     layer.style prop, val

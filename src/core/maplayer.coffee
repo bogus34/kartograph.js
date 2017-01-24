@@ -44,24 +44,21 @@ class MapLayer
     addPath: (svg_path, titles) ->
         @paths ?= []
 
-        # layerPath = new MapLayerPath(svg_path, @id, this, titles)
-        # if type(@filter) == 'function'
-        #     if @filter(layerPath.data) == false
-        #         layerPath.remove()
-        #         return
+        layerPath = new MapLayerPath(svg_path, @id, this, titles)
+        if type(@filter) == 'function'
+            if @filter(layerPath.data) == false
+                layerPath.remove()
+                return
 
-        # @paths.push(layerPath)
+        @paths.push(layerPath)
 
-        # if @path_id?
-        #     @pathsById ?= {}
-        #     @pathsById[layerPath.data[@path_id]] ?= []
-        #     @pathsById[layerPath.data[@path_id]].push(layerPath)
+        if @path_id?
+            @pathsById ?= {}
+            @pathsById[layerPath.data[@path_id]] ?= []
+            @pathsById[layerPath.data[@path_id]].push(layerPath)
 
-
-        #
-        # layer path inlining
-        #
-
+    quickAddPath: (svg_path, titles) ->
+        @paths ?= []
         path = @paper.path $(svg_path).attr('d')
         @paths.push path
 
