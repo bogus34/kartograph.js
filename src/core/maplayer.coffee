@@ -17,7 +17,8 @@
 ###
 
 $ = require 'jquery'
-Raphael = require '../vendor/raphael'
+#Raphael = require '../vendor/raphael'
+Snap = require '../vendor/snap'
 {type} = require '../utils'
 MapLayerPath = require './maplayerpath'
 
@@ -57,10 +58,24 @@ class MapLayer
             @pathsById[layerPath.data[@path_id]] ?= []
             @pathsById[layerPath.data[@path_id]].push(layerPath)
 
-    quickAddPath: (svg_path, titles) ->
+    quickAddPath: (svg_path) ->
         @paths ?= []
-        path = @paper.path $(svg_path).attr('d')
+        path = $(svg_path).clone()
+        path.attr fill: "none", stroke: "#000"
+        path.appendTo @paper.node
         @paths.push path
+        undefined
+
+    addFragment: (svg_paths) ->
+        @paths ?= []
+        svg_paths = svg_paths.map (i, p) ->
+            $(p).clone()
+                .attr(fill: 'none', stroke: '#000')
+                .get(0)
+        fragment = Snap.fragment(svg_paths...)
+        @paper.append fragment
+        @paths.push svg_paths...
+        undefined
 
     hasPath: (id) -> @pathsById? and @pathsById[id]?
     getPathsData: () -> path.data for path in @paths
@@ -91,6 +106,7 @@ class MapLayer
         ###
         return unless @paths
         path.remove() for path in @paths
+        @paths = []
         undefined
 
     style: (props, value, duration, delay) ->
@@ -112,7 +128,7 @@ class MapLayer
             dly ?= 0
 
             if dur > 0
-                anim = Raphael.animation(attrs, dur * 1000)
+                anim = Snap.animation(attrs, dur * 1000)
                 path.svgPath.animate(anim.delay(dly * 1000))
             else
                 if delay is 0

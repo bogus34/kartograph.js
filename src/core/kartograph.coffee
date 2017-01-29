@@ -17,7 +17,8 @@
 ###
 
 $ = require 'jquery'
-Raphael = require '../vendor/raphael'
+#Raphael = require '../vendor/raphael'
+Snap = require '../vendor/snap'
 
 {warn, type} = require '../utils'
 View = require './view'
@@ -43,7 +44,7 @@ class Kartograph
     load: (resolver, callback, opts = {}) ->
         @clear()
         if @paper?
-            $(@paper.canvas).remove()
+            $(@paper.node).remove()
             @paper = undefined
 
         @loader = new MapLoader resolver
@@ -90,9 +91,9 @@ class Kartograph
 
         unless @paper
             @paper = @createSVGLayer(null, opts)
-            @paper.panzoom()?.on 'afterApplyZoom', (val, _, panzoom) =>
+            @paper.panzoom?().on 'afterApplyZoom', (val, _, panzoom) =>
                 @reload panzoom.getCurrentPosition(), panzoom.getCurrentZoom(), opts, callback
-            @paper.panzoom()?.on 'afterApplyPan', (dx, dy, panzoom) =>
+            @paper.panzoom?().on 'afterApplyPan', (dx, dy, panzoom) =>
                 @reload panzoom.getCurrentPosition(), panzoom.getCurrentZoom(), opts, callback
 
         vp = @viewport
@@ -138,67 +139,28 @@ class Kartograph
             @layerIds.push layer_id
             @layers[layer_id] = new MapLayer(layer_id, path_id, this, opts.filter, @paper)
 
-        rows = $paths.length
-        chunkSize = opts.chunks ? rows
-        iter = 0
-
-        nextPaths = =>
-            base = (chunkSize) * iter
-            for i in [0...chunkSize]
-                if base + i < rows
-                    layer.quickAddPath $paths.get(base+i), titles
-            if opts.styles?
-                for prop, val of opts.styles
-                    layer.style prop, val
-            iter++
-            if iter * chunkSize < rows
-                @nextPathTimeout = setTimeout nextPaths, 0
-            else
-                moveOn()
-
-        moveOn = =>
-            @nextPathTimeout = null
-
-            # add event handlers
-            checkEvents = ['click', 'mouseenter', 'mouseleave', 'dblclick', 'mousedown', 'mouseup', 'mouseover', 'mouseout']
-            for evt in checkEvents
-                layer.on evt, opts[evt] if type(opts[evt]) is 'function'
-
-            for evt of opts.on
-                layer.on evt, opts.on[evt] if type(opts.on[evt]) is 'function'
-
-            if opts.tooltips?
-                layer.tooltips opts.tooltips
-            if opts.done?
-                opts.done()
-
-        if opts.chunks?
-            @nextPathTimeout = setTimeout nextPaths, 0
-        else
-            nextPaths()
-
-        this
+        layer.addFragment $paths
 
     createSVGLayer: (id, opts = {}) ->
         @_layerCnt ?= 0
         lid = @_layerCnt++
-        vp = @viewport
-        cnt = @container
-        paper = Raphael cnt[0], vp.width, vp.height
+
+        paper = Snap @viewport.width, @viewport.height
+        $(paper.node).appendTo @container
         panZoom = paper.panzoom @panZoomOptions(opts)
         panZoom.enable()
 
-        svg = $ paper.canvas
+        svg = $ paper.node
         svg.css
             position: 'absolute'
             top: '0px'
             left: '0px'
             'z-index': lid+5
 
-        if cnt.css('position') == 'static'
-            cnt.css
+        if @container.css('position') == 'static'
+            @container.css
                 position: 'relative'
-                height: vp.height+'px'
+                height: @viewport.height+'px'
 
         svg.addClass id
 
@@ -232,7 +194,7 @@ class Kartograph
         @markers = []
 
     zoom: (steps) ->
-        return unless @paper
+        return unless @paper and @paper.panzoom?
         @paper.panzoom().zoomIn(steps)
 
     # fadeIn: (opts = {}) ->
@@ -323,55 +285,61 @@ class Kartograph
 
         @svgSrc = null
 
-    loadCSS: (url, callback) ->
-        ###
-        loads a stylesheet
-        ###
-        if not Raphael.svg
-            $.ajax
-                url: url
-                dataType: 'text'
-                success: (resp) =>
-                    @styles = parsecss resp
-                    callback()
-                error: (a,b,c) ->
-                    warn 'error while loading '+url, a,b,c
+    #
+    # XXX Not used and not fixed
+    #
+    # loadCSS: (url, callback) ->
+    #     ###
+    #     loads a stylesheet
+    #     ###
+    #     if not Raphael.svg
+    #         $.ajax
+    #             url: url
+    #             dataType: 'text'
+    #             success: (resp) =>
+    #                 @styles = parsecss resp
+    #                 callback()
+    #             error: (a,b,c) ->
+    #                 warn 'error while loading '+url, a,b,c
 
-        else
-            $('body').append '<link rel="stylesheet" href="'+url+'" />'
-            callback()
+    #     else
+    #         $('body').append '<link rel="stylesheet" href="'+url+'" />'
+    #         callback()
 
-    applyCSS: (el, className) ->
-        ###
-        applies pre-loaded css styles to
-        raphael elements
-        ###
-        if not @styles?
-            return el
+    #
+    # XXX Not fixed
+    #
+    # applyCSS: (el, className) ->
+    #     ###
+    #     applies pre-loaded css styles to
+    #     raphael elements
+    #     ###
+    #     if not @styles?
+    #         return el
 
-        @_pathTypes ?= ["path", "circle", "rectangle", "ellipse"]
-        @_regardStyles ?= ["fill", "stroke", "fill-opacity", "stroke-width", "stroke-opacity"]
-        for sel of @styles
-            p = sel
-            for selectors in p.split ','
-                p = selectors.split ' ' # ignore hierarchy
-                p = p[p.length-1]
-                p = p.split ':' # check pseudo classes
-                if p.length > 1
-                    continue
-                p = p[0].split '.' # check classes
-                classes = p.slice(1)
-                if classes.length > 0 and classes.indexOf(className) < 0
-                    continue
-                p = p[0]
-                if @_pathTypes.indexOf(p) >= 0 and p != el.type
-                    continue
-                # if we made it until here, the styles can be applied
-                props = @styles[sel]
-                for k in @_regardStyles
-                    if props[k]?
-                        el.attr k,props[k]
-        el
+    #     @_pathTypes ?= ["path", "circle", "rectangle", "ellipse"]
+    #     @_regardStyles ?= ["fill", "stroke", "fill-opacity", "stroke-width", "stroke-opacity"]
+    #     for sel of @styles
+    #         p = sel
+    #         for selectors in p.split ','
+    #             p = selectors.split ' ' # ignore hierarchy
+    #             p = p[p.length-1]
+    #             p = p.split ':' # check pseudo classes
+    #             if p.length > 1
+    #                 continue
+    #             p = p[0].split '.' # check classes
+    #             classes = p.slice(1)
+    #             if classes.length > 0 and classes.indexOf(className) < 0
+    #                 continue
+    #             p = p[0]
+    #             if @_pathTypes.indexOf(p) >= 0 and p != el.type
+    #                 continue
+    #             # if we made it until here, the styles can be applied
+    #             props = @styles[sel]
+    #             for k in @_regardStyles
+    #                 if props[k]?
+    #                     el.attr k,props[k]
+    #     el
 
     style: (layer, prop, value, duration, delay) ->
         layer = @getLayer(layer)
@@ -406,7 +374,7 @@ class Kartograph
         @urlsByZoomLevel[@currentZoomLevel] = @currentUrls
         @paperByZoomLevel[@currentZoomLevel] = @paper
         @layersByZoomLevel[@currentZoomLevel] = @layers
-        $(@paper.canvas).hide()
+        $(@paper.node).hide()
         @currentUrls = null
         @paper = null
         @layers = {}
@@ -416,7 +384,7 @@ class Kartograph
             @currentUrls = @urlsByZoomLevel[zoomLevel]
             @paper = @paperByZoomLevel[zoomLevel]
             @layers = @layersByZoomLevel[zoomLevel]
-            $(@paper.canvas).show()
+            $(@paper.node).show()
         else
             @currentUrls = []
             @paper = null

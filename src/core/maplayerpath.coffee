@@ -16,7 +16,6 @@
     License along with this library. If not, see <http://www.gnu.org/licenses/>.
 ###
 
-Raphael = require '../vendor/raphael'
 geom = require './geom'
 {type} = require '../utils'
 
@@ -31,11 +30,13 @@ class MapLayerPath
         @vpath = view.projectPath(path)
         @svgPath = @vpath.toSVG(paper)
         @svgPath.data 'path', this
+
         if not map.styles?
-            if Raphael.svg
-                @svgPath.node.setAttribute('class', layer_id)
-        else
-            map.applyCSS @svgPath,layer_id
+            @svgPath.node.setAttribute('class', layer_id)
+
+        # XXX
+        # else
+        #     map.applyCSS @svgPath,layer_id
 
         uid = 'path_' + map_layer_path_uid++
         @svgPath.node.setAttribute('id', uid)

@@ -1,5 +1,5 @@
 EventEmitter = require 'events'
-debug = require('debug')('raphael-pan-zoom')
+debug = require('debug')('kartograph-pan-zoom')
 
 findPos = (obj) ->
     posX = obj.offsetLeft
@@ -29,7 +29,7 @@ getRelativePosition = (e, obj) ->
 
 class PanZoom extends EventEmitter
     constructor: (@paper, options = {}) ->
-        @container = @paper.canvas.parentNode
+        @container = @paper.node.parentNode
         @settings = {}
 
         @initialPos =
@@ -71,6 +71,11 @@ class PanZoom extends EventEmitter
             @container.addEventListener 'mousedown', @handleMouseDown, false
             @container.addEventListener 'mouseup', @handleMouseUp, false
 
+    getPaperDim: ->
+        w: parseInt @paper.attr('width')
+        h: parseInt @paper.attr('height')
+
+
     repaint: (force) ->
         debug 'repaint zoom: %s, pos: %o', @currZoom, @currPos
 
@@ -78,18 +83,20 @@ class PanZoom extends EventEmitter
             x: @currPos.x + @deltaX
             y: @currPos.y + @deltaY
 
-        newWidth = @paper.width * (1 - (@currZoom * @settings.zoomStep))
-        newHeight = @paper.height * (1 - (@currZoom * @settings.zoomStep))
+        paperDim = @getPaperDim()
+
+        newWidth = paperDim.w * (1 - (@currZoom * @settings.zoomStep))
+        newHeight = paperDim.h * (1 - (@currZoom * @settings.zoomStep))
 
         if newPos.x < 0
             newPos.x = 0
-        else if newPos.x > @paper.width * @currZoom * @settings.zoomStep
-            newPos.x = @paper.width * @currZoom * @settings.zoomStep
+        else if newPos.x > paperDim.w * @currZoom * @settings.zoomStep
+            newPos.x = paperDim.w * @currZoom * @settings.zoomStep
 
         if newPos.y < 0
             newPos.y = 0
-        else if newPos.y > @paper.height * @currZoom * @settings.zoomStep
-            newPos.y = @paper.height * @currZoom * @settings.zoomStep
+        else if newPos.y > paperDim.h * @currZoom * @settings.zoomStep
+            newPos.y = paperDim.h * @currZoom * @settings.zoomStep
 
         debug 'new pos: %o, new size: %o', newPos, {width: newWidth, height: newHeight}
 
@@ -98,19 +105,24 @@ class PanZoom extends EventEmitter
             newPos.y is @currPos.y
 
         @currPos = newPos
-        @paper.setViewBox @currPos.x, @currPos.y, newWidth, newHeight
+        @setViewBox @currPos.x, @currPos.y, newWidth, newHeight
         true
+
+    setViewBox: (x, y, w, h) ->
+        @paper.attr viewBox: "#{x},#{y},#{w},#{h}"
 
     dragging: (e) =>
         return false unless @enabled
         evt = window.event or e
 
-        newWidth = @paper.width * (1 - (@currZoom * @settings.zoomStep))
-        newHeight = @paper.height * (1 - (@currZoom * @settings.zoomStep))
+        paperDim = @getPaperDim()
+
+        newWidth = paperDim.w * (1 - (@currZoom * @settings.zoomStep))
+        newHeight = paperDim.h * (1 - (@currZoom * @settings.zoomStep))
         newPoint = getRelativePosition(evt, @container)
 
-        dx = newWidth * (newPoint.x - (@initialPos.x)) / @paper.width * -1
-        dy = newHeight * (newPoint.y - (@initialPos.y)) / @paper.height * -1
+        dx = newWidth * (newPoint.x - (@initialPos.x)) / paperDim.w * -1
+        dy = newHeight * (newPoint.y - (@initialPos.y)) / paperDim.h * -1
         @initialPos = newPoint
         @applyPan dx, dy
 
@@ -126,6 +138,8 @@ class PanZoom extends EventEmitter
 
         @emit 'beforeApplyZoom', val, centerPoint, this
 
+        paperDim = @getPaperDim()
+
         @currZoom += val
         if @currZoom < @settings.minZoom
             @currZoom = @settings.minZoom
@@ -133,10 +147,10 @@ class PanZoom extends EventEmitter
             @currZoom = @settings.maxZoom
         else
             centerPoint = centerPoint or
-                x: @paper.width / 2
-                y: @paper.height / 2
-            @deltaX = @paper.width * @settings.zoomStep * centerPoint.x / @paper.width * val
-            @deltaY = @paper.height * @settings.zoomStep * centerPoint.y / @paper.height * val
+                x: paperDim.w / 2
+                y: paperDim.h / 2
+            @deltaX = paperDim.w * @settings.zoomStep * centerPoint.x / paperDim.w * val
+            @deltaY = paperDim.h * @settings.zoomStep * centerPoint.y / paperDim.h * val
 
         @emit 'afterApplyZoom', val, centerPoint, this if @repaint()
 
@@ -200,11 +214,18 @@ class PanZoom extends EventEmitter
     getCurrentPosition: -> @currPos
     getCurrentZoom: -> @currZoom
 
-init = (Raphael) ->
-    Raphael.fn.panzoom = (options) ->
+init = (Snap, Element, Paper) ->
+    # Snap.fn.panzoom = (options) ->
+    #     if @_panzoomInstance
+    #         @_panzoomInstance
+    #     else
+    #         @_panzoomInstance = new PanZoom(this, options)
+
+    Paper::panzoom = (options) ->
         if @_panzoomInstance
             @_panzoomInstance
         else
             @_panzoomInstance = new PanZoom(this, options)
+
 
 module.exports = init
