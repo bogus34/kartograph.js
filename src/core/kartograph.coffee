@@ -17,7 +17,6 @@
 ###
 
 $ = require 'jquery'
-#Raphael = require '../vendor/raphael'
 Snap = require '../vendor/snap'
 
 {warn, type} = require '../utils'
@@ -69,10 +68,6 @@ class Kartograph
                 @currentZoomLevel = zoomLevel
                 @currentUrls = []
 
-            # if @currentZoomLevel isnt zoomLevel
-            #     @pushCurrentZoomLevel()
-            #     @popZoomLevel(zoomLevel)
-
             if url not in @currentUrls
                 @currentUrls.push url
                 @fragmentLoaded(svg, opts, callback)
@@ -107,7 +102,7 @@ class Kartograph
 
         callback? this
 
-    addLayer: (id, opts={}) ->
+    addLayer: (id, opts = {}) ->
         ###
         add new layer
         ###
@@ -140,6 +135,8 @@ class Kartograph
             @layers[layer_id] = new MapLayer(layer_id, path_id, this, opts.filter, @paper)
 
         layer.addFragment $paths
+        layer.style opts.styles if opts.styles
+        layer.tooltips opts.tooltips if opts.tooltips
 
     createSVGLayer: (id, opts = {}) ->
         @_layerCnt ?= 0
@@ -349,8 +346,8 @@ class Kartograph
     panZoomOptions: (opts) ->
         defaultOpts = {
             minZoom: 0
-            maxZoom: 19
-            zoomStep: 0.1
+            maxZoom: 18
+            zoomStep: 0.05
             initialZoom: @currentZoomLevel or 0
             initialPosition: { x: 0, y: 0 }
         }
@@ -363,33 +360,5 @@ class Kartograph
         return unless @layers
         fn(layer) for id, layer of @layers
         undefined
-
-    pushCurrentZoomLevel: ->
-        return unless @paper and @currentZoomLevel?
-
-        if @nextPathTimeout
-            clearTimeout @nextPathTimeout
-            @nextPathTimeout = null
-
-        @urlsByZoomLevel[@currentZoomLevel] = @currentUrls
-        @paperByZoomLevel[@currentZoomLevel] = @paper
-        @layersByZoomLevel[@currentZoomLevel] = @layers
-        $(@paper.node).hide()
-        @currentUrls = null
-        @paper = null
-        @layers = {}
-
-    popZoomLevel: (zoomLevel) ->
-        if @paperByZoomLevel[zoomLevel]
-            @currentUrls = @urlsByZoomLevel[zoomLevel]
-            @paper = @paperByZoomLevel[zoomLevel]
-            @layers = @layersByZoomLevel[zoomLevel]
-            $(@paper.node).show()
-        else
-            @currentUrls = []
-            @paper = null
-            @layers = {}
-
-        @currentZoomLevel = zoomLevel
 
 module.exports = Kartograph

@@ -17,7 +17,6 @@
 ###
 
 $ = require 'jquery'
-#Raphael = require '../vendor/raphael'
 Snap = require '../vendor/snap'
 {type} = require '../utils'
 MapLayerPath = require './maplayerpath'
@@ -57,14 +56,6 @@ class MapLayer
             @pathsById ?= {}
             @pathsById[layerPath.data[@path_id]] ?= []
             @pathsById[layerPath.data[@path_id]].push(layerPath)
-
-    quickAddPath: (svg_path) ->
-        @paths ?= []
-        path = $(svg_path).clone()
-        path.attr fill: "none", stroke: "#000"
-        path.appendTo @paper.node
-        @paths.push path
-        undefined
 
     addFragment: (svg_paths) ->
         @paths ?= []
@@ -129,14 +120,17 @@ class MapLayer
 
             if dur > 0
                 anim = Snap.animation(attrs, dur * 1000)
-                path.svgPath.animate(anim.delay(dly * 1000))
+                svgPath = $(path.svgPath or path)
+                svgPath.animate(anim.delay(dly * 1000))
             else
                 if delay is 0
                     setTimeout () ->
-                        path.svgPath.attr(attrs)
+                        svgPath = $(path.svgPath or path)
+                        svgPath.attr(attrs)
                     , 0
                 else
-                    path.svgPath.attr(attrs)
+                    svgPath = $(path.svgPath or path)
+                    svgPath.attr(attrs)
         this
 
     on: (event, callback) ->
@@ -177,7 +171,8 @@ class MapLayer
             $(path.svgPath.node).qtip(cfg)
 
         for path in @paths
-            tt = resolve content, path.data
+            data = $(path.svgPath or path).data()
+            tt = resolve content, data
             setTooltip path, tt
         this
 

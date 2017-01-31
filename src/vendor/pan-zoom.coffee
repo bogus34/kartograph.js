@@ -36,9 +36,6 @@ class PanZoom extends EventEmitter
           x: 0
           y: 0
 
-        @deltaX = 0
-        @deltaY = 0
-
         mousewheelevt = if /Firefox/i.test(navigator.userAgent)
             'DOMMouseScroll'
         else
@@ -76,12 +73,12 @@ class PanZoom extends EventEmitter
         h: parseInt @paper.attr('height')
 
 
-    repaint: (force) ->
+    repaint: (force, deltaX = 0, deltaY = 0) ->
         debug 'repaint zoom: %s, pos: %o', @currZoom, @currPos
 
         newPos =
-            x: @currPos.x + @deltaX
-            y: @currPos.y + @deltaY
+            x: @currPos.x + deltaX
+            y: @currPos.y + deltaY
 
         paperDim = @getPaperDim()
 
@@ -141,24 +138,25 @@ class PanZoom extends EventEmitter
         paperDim = @getPaperDim()
 
         @currZoom += val
-        if @currZoom < @settings.minZoom
+        if @currZoom <= @settings.minZoom
             @currZoom = @settings.minZoom
-        else if @currZoom > @settings.maxZoom
+        else if @currZoom >= @settings.maxZoom
             @currZoom = @settings.maxZoom
         else
             centerPoint = centerPoint or
                 x: paperDim.w / 2
                 y: paperDim.h / 2
-            @deltaX = paperDim.w * @settings.zoomStep * centerPoint.x / paperDim.w * val
-            @deltaY = paperDim.h * @settings.zoomStep * centerPoint.y / paperDim.h * val
 
-        @emit 'afterApplyZoom', val, centerPoint, this if @repaint()
+            deltaX = paperDim.w * @settings.zoomStep * centerPoint.x / paperDim.w * val
+            deltaY = paperDim.h * @settings.zoomStep * centerPoint.y / paperDim.h * val
+
+        @emit 'afterApplyZoom', val, centerPoint, this if @repaint(false, deltaX, deltaY)
 
     applyPan: (dX, dY) ->
         @emit 'beforeApplyPan', dX, dY, this
-        @deltaX = dX
-        @deltaY = dY
-        @emit 'afterApplyPan', dX, dY, this if @repaint()
+        deltaX = dX
+        deltaY = dY
+        @emit 'afterApplyPan', dX, dY, this if @repaint(false, deltaX, deltaY)
 
     handleScroll: (e) =>
         return false unless @enabled

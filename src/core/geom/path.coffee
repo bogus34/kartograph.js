@@ -16,7 +16,6 @@
     License along with this library. If not, see <http://www.gnu.org/licenses/>.
 ###
 
-#Raphael = require '../../vendor/raphael'
 Snap = require '../../vendor/snap'
 clipping = require './clipping'
 
