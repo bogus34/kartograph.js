@@ -16,12 +16,15 @@ var config = {
     },
     module: {
         loaders: [
-            { test: /\.coffee$/, loader: 'coffee' }
+            { test: /\.coffee$/, loader: 'coffee' },
         ]
     },
     resolve: {
         extensions: ['', '.js', '.coffee'],
-        alias: { jQuery: 'jquery' }
+        alias: {
+            jquery: require.resolve('./src/vendor/jquery.coffee'),
+            jQuery: 'jquery'
+        }
     },
     plugins: []
 };

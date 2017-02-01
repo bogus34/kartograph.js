@@ -35,7 +35,6 @@ class Kartograph
             h: height or @container.height() or 'auto'
             w: width or @container.width()
         @markers = []
-        @pathById = {}
         @loader = null
 
         @container.addClass 'kartograph'
