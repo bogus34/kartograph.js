@@ -12385,13 +12385,12 @@ var kartograph =
 	    this.view = map.viewBC;
 	    this.map = map;
 	    this.filter = filter;
+	    this.paths = [];
+	    this.g = null;
 	  }
 	
 	  MapLayer.prototype.addFragment = function(svg_paths) {
 	    var fragment, ref;
-	    if (this.paths == null) {
-	      this.paths = [];
-	    }
 	    svg_paths = svg_paths.map(function(i, p) {
 	      return $(p).clone().attr({
 	        fill: 'none',
@@ -12399,7 +12398,10 @@ var kartograph =
 	      }).get(0);
 	    });
 	    fragment = Snap.fragment.apply(Snap, svg_paths);
-	    this.paper.append(fragment);
+	    if (this.g == null) {
+	      this.g = this.paper.g();
+	    }
+	    this.g.append(fragment);
 	    (ref = this.paths).push.apply(ref, svg_paths);
 	    return void 0;
 	  };
@@ -12411,7 +12413,6 @@ var kartograph =
 	    /*
 	    removes every path
 	     */
-	    var j, len, path, ref;
 	    if (typeof this.cancelStyle === "function") {
 	      this.cancelStyle();
 	    }
@@ -12421,11 +12422,7 @@ var kartograph =
 	    if (!this.paths) {
 	      return;
 	    }
-	    ref = this.paths;
-	    for (j = 0, len = ref.length; j < len; j++) {
-	      path = ref[j];
-	      $(path).remove();
-	    }
+	    this.g.remove();
 	    this.paths = [];
 	    return void 0;
 	  };

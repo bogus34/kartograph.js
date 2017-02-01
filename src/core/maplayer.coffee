@@ -39,15 +39,18 @@ class MapLayer
         @view = map.viewBC
         @map = map
         @filter = filter
+        @paths = []
+        @g = null
+
 
     addFragment: (svg_paths) ->
-        @paths ?= []
         svg_paths = svg_paths.map (i, p) ->
             $(p).clone()
                 .attr(fill: 'none', stroke: '#000')
                 .get(0)
         fragment = Snap.fragment(svg_paths...)
-        @paper.append fragment
+        @g ?= @paper.g()
+        @g.append fragment
         @paths.push svg_paths...
         undefined
 
@@ -69,7 +72,7 @@ class MapLayer
         @cancelStyle?()
         @cancelTooltips?()
         return unless @paths
-        $(path).remove() for path in @paths
+        @g.remove()
         @paths = []
         undefined
 
