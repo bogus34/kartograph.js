@@ -181,7 +181,7 @@ asyncEach = (list, chunkSize, fn) ->
         for n in [skip..Math.min(skip + chunkSize, list.length - 1)]
             fn list[n], n
 
-        timeout = setTimeout (-> step(n + 1)), 0 unless n >= list.length
+        timeout = setTimeout (-> step(n)), 0 unless n >= list.length
 
     step 0
     -> clearTimeout timeout if timeout

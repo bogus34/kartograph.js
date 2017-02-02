@@ -12586,7 +12586,7 @@ var kartograph =
 	    }
 	    if (!(n >= list.length)) {
 	      return timeout = setTimeout((function() {
-	        return step(n + 1);
+	        return step(n);
 	      }), 0);
 	    }
 	  };
