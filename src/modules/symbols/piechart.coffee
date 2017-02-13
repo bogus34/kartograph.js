@@ -27,24 +27,22 @@ class PieChart extends Symbol
         titles: ['red pie', 'blue pie']
     })
     ###
-    me = null
 
     constructor: (opts) ->
-        me = @
         super opts
-        me.radius = opts.radius ? 4
-        me.styles = opts.styles ? ''
-        me.colors = opts.colors ? ['#3cc','#c3c','#33c','#cc3']
-        me.titles = opts.titles ? ['','','','','']
-        me.values = opts.values ? []
-        me.border = opts.border ? false
-        me.borderWidth = opts.borderWidth ? 2
-        me.class = opts.class ? 'piechart'
+        @radius = opts.radius ? 4
+        @styles = opts.styles ? ''
+        @colors = opts.colors ? ['#3cc','#c3c','#33c','#cc3']
+        @titles = opts.titles ? ['','','','','']
+        @values = opts.values ? []
+        @border = opts.border ? false
+        @borderWidth = opts.borderWidth ? 2
+        @class = opts.class ? 'piechart'
         Raphael.fn.pieChart ?= drawPieChart
 
     overlaps: (bubble) ->
         # check bbox
-        [x1,y1,r1] = [me.x, me.y, me.radius]
+        [x1,y1,r1] = [@x, @y, @radius]
         [x2,y2,r2] = [bubble.x, bubble.y, bubble.radius]
         return false if x1 - r1 > x2 + r2 or x1 + r1 < x2 - r2 or y1 - r1 > y2 + r2 or y1 + r1 < y2 - r2
         dx = x1-x2
@@ -54,38 +52,35 @@ class PieChart extends Symbol
         true
 
     render: (layers) ->
-        #me.path = me.layers.mapcanvas.circle me.x,me.y,me.radius
-        me = @
-        if me.border?
-            bg = me.layers.mapcanvas.circle(me.x,me.y,me.radius+me.borderWidth).attr
+        #@path = @layers.mapcanvas.circle @x,@y,@radius
+        if @border?
+            bg = @layers.mapcanvas.circle(@x,@y,@radius+@borderWidth).attr
                 stroke: 'none'
-                fill: me.border
+                fill: @border
 
-        me.chart = me.layers.mapcanvas.pieChart me.x, me.y, me.radius, me.values, me.titles, me.colors, "none"
-        me.chart.push bg
-        me
+        @chart = @layers.mapcanvas.pieChart @x, @y, @radius, @values, @titles, @colors, "none"
+        @chart.push bg
+        this
 
     update: (opts) ->
         return
-        me.path.attr
-            x: me.x
-            y: me.y
-            r: me.radius
-        path = me.path
-        path.node.setAttribute 'style', me.styles[0]
-        path.node.setAttribute 'class', me.class
-        if me.title?
-            path.attr 'title',me.titles[0]
-        me
+        @path.attr
+            x: @x
+            y: @y
+            r: @radius
+        path = @path
+        path.node.setAttribute 'style', @styles[0]
+        path.node.setAttribute 'class', @class
+        if @title?
+            path.attr 'title',@titles[0]
+        this
 
-    clear: () ->
-        me = @
-        for p in me.chart
-            p.remove()
-        me
+    clear: ->
+        p.remove() for p in @chart
+        undefined
 
     nodes: () ->
-        for el in me.chart
+        for el in @chart
             el.node
 
 
@@ -118,7 +113,7 @@ drawPieChart = (cx, cy, r, values, labels, colors, stroke) ->
         color = colors[j]
         ms = 500
         delta = 30
-        p = sector cx, cy, r, angle, angle+angleplus, 
+        p = sector cx, cy, r, angle, angle+angleplus,
             fill: color
             stroke: stroke
             'stroke-width': 1
@@ -136,6 +131,3 @@ drawPieChart = (cx, cy, r, values, labels, colors, stroke) ->
     for i of values
         process i
     chart
-
-
-

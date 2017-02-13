@@ -16,6 +16,7 @@
     License along with this library. If not, see <http://www.gnu.org/licenses/>.
 ###
 
+{warn, type} = require '../utils'
 
 class SymbolGroup
     ### symbol groups
@@ -24,120 +25,118 @@ class SymbolGroup
     new $K.SymbolGroup(options);
     map.addSymbols(options)
     ###
-    me = null
 
     constructor: (opts) ->
-        me = @
         required = ['data', 'location', 'type', 'map']
-        optional = ['filter', 'tooltip', 'click', 'delay', 'sortBy', 'clustering', 'aggregate', 'clusteringOpts', 'mouseenter', 'mouseleave']
+        optional = [
+            'filter', 'tooltip', 'click', 'delay', 'sortBy', 'clustering',
+            'aggregate', 'clusteringOpts', 'mouseenter', 'mouseleave'
+        ]
 
         for p in required
             if opts[p]?
-                me[p] = opts[p]
+                this[p] = opts[p]
             else
-                throw "SymbolGroup: missing argument '"+p+"'"
+                throw new Error("SymbolGroup: missing argument '#{p}'")
 
-        for p in optional
-            if opts[p]?
-                me[p] = opts[p]
+        this[p] = opts[p] for p in optional when opts[p]?
 
-        SymbolType = me.type
+        SymbolType = @type
 
         if not SymbolType?
-            warn 'could not resolve symbol type', me.type
+            warn 'could not resolve symbol type', @type
             return
 
         # init symbol properties
         for p in SymbolType.props
             if opts[p]?
-                me[p] = opts[p]
+                this[p] = opts[p]
 
         # init layer
-        me.layers =
-            mapcanvas: me.map.paper
+        @layers =
+            mapcanvas: @map.paper
 
         for l in SymbolType.layers
             nid = SymbolGroup._layerid++
             id = 'sl_'+nid
             if l.type == 'svg'
-                layer = me.map.createSVGLayer id
+                layer = @map.createSVGLayer id
             else if l.type == 'html'
-                layer = me.map.createHTMLLayer id
-            me.layers[l.id] = layer
+                layer = @map.createHTMLLayer id
+            @layers[l.id] = layer
 
         # add symbols
-        me.symbols = []
-        for i of me.data
-            d = me.data[i]
-            if __type(me.filter) == "function"
-                me.add d, i if me.filter d, i
+        @symbols = []
+        for i of @data
+            d = @data[i]
+            if type(@filter) == "function"
+                @add d, i if @filter d, i
             else
-                me.add d, i
+                @add d, i
 
-        me.layout()
-        me.render()
-        me.map.addSymbolGroup(me)
+        @layout()
+        @render()
+        @map.addSymbolGroup(this)
 
 
+    ### adds a new symbol to this group ###
     add: (data, key) ->
-        ### adds a new symbol to this group ###
-        me = @
-        SymbolType = me.type
-        ll = me._evaluate me.location,data,key
-        if __type(ll) == 'array'
-            ll = new LonLat ll[0],ll[1]
+        SymbolType = @type
+        ll = @_evaluate @location, data, key
+        ll = new LonLat ll[0],ll[1] if type(ll) == 'array'
 
         sprops =
-            layers: me.layers
+            layers: @layers
             location: ll
             data: data
-            key: key ? me.symbols.length
-            map: me.map
+            key: key ? @symbols.length
+            map: @map
 
-        for p in SymbolType.props
-            if me[p]?
-                sprops[p] = me._evaluate me[p],data,key
+        for p in SymbolType.props when this[p]?
+            sprops[p] = @_evaluate this[p], data, key
 
         symbol = new SymbolType sprops
-        me.symbols.push symbol
+        @symbols.push symbol
         symbol
 
-
-    layout: () ->
-        for s in me.symbols
+    layout: ->
+        for s in @symbols
             ll = s.location
-            if __type(ll) == 'string'  # use layer path centroid as coordinates
+            if type(ll) == 'string'  # use layer path centroid as coordinates
                 [layer_id, path_id] = ll.split('.')
-                path = me.map.getLayerPath(layer_id, path_id)
+                # XXX нет никакого getLayerPath
+                path = @map.getLayerPath(layer_id, path_id)
                 if path?
-                    xy = me.map.viewBC.project path.path.centroid()
+                    # XXX и я не использую пути
+                    xy = @map.viewBC.project path.path.centroid()
                 else
                     warn 'could not find layer path '+layer_id+'.'+path_id
                     continue
             else
-                xy = me.map.lonlat2xy ll
+                xy = @map.lonlat2xy ll
             s.x = xy[0]
             s.y = xy[1]
-        if me.clustering == 'k-means'
-            me._kMeans()
-        else if me.clustering == 'noverlap'
-            me._noverlap()
-        me
+
+        if @clustering == 'k-means'
+            @_kMeans()
+        else if @clustering == 'noverlap'
+            @_noverlap()
+
+        this
 
     render: () ->
-        me = @
         # sort
-        if me.sortBy
+        if @sortBy
             sortDir = 'asc'
-            if __type(me.sortBy) == "string"
-                me.sortBy = me.sortBy.split ' ',2
-                sortBy = me.sortBy[0]
-                sortDir = me.sortBy[1] ? 'asc'
+            if type(@sortBy) == "string"
+                @sortBy = @sortBy.split ' ', 2
+                sortBy = @sortBy[0]
+                sortDir = @sortBy[1] ? 'asc'
 
-            me.symbols = me.symbols.sort (a,b) ->
-                if __type(me.sortBy) == "function"
-                    va = me.sortBy a.data, a
-                    vb = me.sortBy b.data, b
+            @symbols = @symbols.sort (a,b) =>
+                if type(@sortBy) == "function"
+                    va = @sortBy a.data, a
+                    vb = @sortBy b.data, b
                 else
                     va = a[sortBy]
                     vb = b[sortBy]
@@ -146,38 +145,36 @@ class SymbolGroup
                 return if va > vb then 1*m else -1*m
 
         # render
-        for s in me.symbols
+        for s in @symbols
             s.render()
             for node in s.nodes()
                 node.symbol = s
 
         # tooltips
-        if __type(me.tooltip) == "function"
+        if type(@tooltip) == "function"
             me._initTooltips()
 
         # events
-        $.each ['click', 'mouseenter', 'mouseleave'], (i, evt) ->
-            if __type(me[evt]) == "function"
-                for s in me.symbols
+        $.each ['click', 'mouseenter', 'mouseleave'], (i, evt) =>
+            if type(this[evt]) == "function"
+                for s in @symbols
                     for node in s.nodes()
                         $(node)[evt] (e) =>
                             tgt = e.target
                             while not tgt.symbol
                                 tgt = $(tgt).parent().get(0)
                             e.stopPropagation()
-                            me[evt] tgt.symbol.data, tgt.symbol, e
-        me
+                            this[evt] tgt.symbol.data, tgt.symbol, e
+        this
 
     tooltips: (cb) ->
-        me = @
-        me.tooltips = cb
-        me._initTooltips()
-        me
+        @tooltips = cb
+        @_initTooltips()
+        this
 
     remove: (filter) ->
-        me = @
         kept = []
-        for s in me.symbols
+        for s in @symbols
             if filter? and not filter(s.data)
                 kept.push s
                 continue
@@ -185,21 +182,21 @@ class SymbolGroup
                 s.clear()
             catch error
                 warn 'error: symbolgroup.remove'
+
         if not filter?
-            for id,layer of me.layers
-                if id != "mapcanvas"
-                    layer.remove()
+            for id,layer of @layers when id isnt "mapcanvas"
+                layer.remove()
         else
-            me.symbols = kept
+            @symbols = kept
 
     _evaluate: (prop, data, key) ->
         ### evaluates a property function or returns a static value ###
-        if __type(prop) == 'function'
+        if type(prop) == 'function'
             val = prop data, key
         else
             val = prop
 
-    _kMeans: () =>
+    _kMeans: =>
         ###
         layouts symbols in this group, eventually adds new 'grouped' symbols
         map.addSymbols({
@@ -210,16 +207,15 @@ class SymbolGroup
             }
         })
         ###
-        me = @
-        me.osymbols ?= me.symbols
-        SymbolType = me.type
-        if me.clusteringOpts?
-            size = me.clusteringOpts.size
+        @osymbols ?= @symbols
+        SymbolType = @type
+        if @clusteringOpts?
+            size = @clusteringOpts.size
         size ?= 64
 
         cluster = kmeans().iterations(16).size(size)
 
-        for s in me.osymbols
+        for s in @osymbols
             cluster.add
                 x: s.x
                 y: s.y
@@ -231,42 +227,41 @@ class SymbolGroup
                 continue
             d = []
             for i in mean.indices
-                d.push me.osymbols[i].data
-            d = me.aggregate d
+                d.push @osymbols[i].data
+            d = @aggregate d
 
             sprops =
-                layers: me.layers
+                layers: @layers
                 location: false
                 data: d
-                map: me.map
+                map: @map
 
             for p in SymbolType.props
-                if me[p]?
-                    sprops[p] = me._evaluate me[p],d
+                if this[p]?
+                    sprops[p] = @_evaluate this[p],d
 
             s = new SymbolType sprops
             s.x = mean.x
             s.y = mean.y
             out.push s
 
-        me.symbols = out
+        @symbols = out
 
-    _noverlap: () =>
-        me = @
-        me.osymbols ?= me.symbols
+    _noverlap: =>
+        @osymbols ?= @symbols
 
         iterations = 3
 
-        SymbolType = me.type
+        SymbolType = @type
         if 'radius' not in SymbolType.props
             warn 'noverlap layout only available for symbols with property "radius"'
             return
 
-        symbols = me.osymbols.slice()
+        symbols = @osymbols.slice()
 
-        if me.clusteringOpts?
-            tolerance = me.clusteringOpts.tolerance
-            maxRatio = me.clusteringOpts.maxRatio
+        if @clusteringOpts?
+            tolerance = @clusteringOpts.tolerance
+            maxRatio = @clusteringOpts.maxRatio
         tolerance ?= 0.05
         maxRatio ?= 0.8
 
@@ -309,17 +304,17 @@ class SymbolGroup
                     for i in intersects
                         d.push symbols[i].data
                         r += symbols[i].radius * symbols[i].radius
-                    d = me.aggregate d
+                    d = @aggregate d
 
                     sprops =
-                        layers: me.layers
+                        layers: @layers
                         location: false
                         data: d
-                        map: me.map
+                        map: @map
 
                     for p in SymbolType.props
-                        if me[p]?
-                            sprops[p] = me._evaluate me[p],d
+                        if this[p]?
+                            sprops[p] = @_evaluate this[p],d
 
                     s = new SymbolType sprops
                     w = s0.radius * s0.radius / r
@@ -339,12 +334,11 @@ class SymbolGroup
                     # no intersection with s0
                     out.push s0
             symbols = out
-        me.symbols = symbols
+        @symbols = symbols
 
-    _initTooltips: () =>
-        me = @
-        tooltips = me.tooltip
-        for s in me.symbols
+    _initTooltips: =>
+        tooltips = @tooltip
+        for s in @symbols
             cfg =
                 position:
                     target: 'mouse'
@@ -364,9 +358,9 @@ class SymbolGroup
                         .hide()
 
             tt = tooltips s.data, s.key
-            if __type(tt) == "string"
+            if type(tt) == "string"
                 cfg.content.text = tt
-            else if __type(tt) == "array"
+            else if type(tt) == "array"
                 cfg.content.title = tt[0]
                 cfg.content.text = tt[1]
 
@@ -375,37 +369,31 @@ class SymbolGroup
         return
 
 
-    onResize: () ->
-        me = @
-        me.layout()
-        for s in me.symbols
+    onResize: ->
+        @layout()
+        for s in @symbols
             s.update()
         return
 
-
     update: (opts, duration, easing) ->
-        me = @
         if not opts?
             opts = {}
-        for s in me.symbols
-            for p in me.type.props
+        for s in @symbols
+            for p in @type.props
                 if opts[p]?
-                    s[p] = me._evaluate opts[p],s.data
-                else if me[p]?
-                    s[p] = me._evaluate me[p],s.data
+                    s[p] = @_evaluate opts[p],s.data
+                else if this[p]?
+                    s[p] = @_evaluate this[p],s.data
             s.update(duration, easing)
-        me
+        this
 
 
 SymbolGroup._layerid = 0
 kartograph.SymbolGroup = SymbolGroup
 
 Kartograph::addSymbols = (opts) ->
-    opts.map = @
+    opts.map = this
     new SymbolGroup(opts)
-
-
-
 
 #
 # Code for k-means clustering is taken from
@@ -630,4 +618,3 @@ kartograph.dorlingLayout = (symbolgroup, iterations=40) ->
                         B.y -= dy * f * (1-(B.r / rd))
                         # overlap! move away from each other
     apply()
-
