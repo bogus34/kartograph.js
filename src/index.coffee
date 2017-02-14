@@ -2,6 +2,10 @@ Kartograph = require './core/kartograph'
 {Proj, proj} = require './core/proj'
 BBox = require './core/bbox'
 
+SymbolGroup = require './modules/symbolgroup'
+Symbol = require './modules/symbol'
+PieChart = require './modules/symbols/piechart'
+
 kartograph = -> new Kartograph(arguments...)
 
 module.exports = {
@@ -13,4 +17,7 @@ module.exports = {
     Proj
     proj
     BBox
+    SymbolGroup
+    Symbol
+    PieChart
 }

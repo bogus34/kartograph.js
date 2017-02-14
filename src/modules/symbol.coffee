@@ -16,36 +16,25 @@
     License along with this library. If not, see <http://www.gnu.org/licenses/>.
 ###
 
-
 class Symbol
     ### base class for all symbols ###
-    me = null
-
     constructor: (opts) ->
-        me = @
-        me.location = opts.location
-        me.data = opts.data
-        me.map = opts.map
-        me.layers = opts.layers
-        me.key = opts.key
-        me.x = opts.x
-        me.y = opts.y
+        @location = opts.location
+        @data = opts.data
+        @map = opts.map
+        @layers = opts.layers
+        @key = opts.key
+        @x = opts.x
+        @y = opts.y
 
-    init: () ->
-        me
+    init: -> this
 
-    overlaps: (symbol) ->
-        false
+    overlaps: (symbol) -> false
 
-    update: (opts) ->
-        ### once the data has changed ###
-        me
+    update: (opts) -> this
 
-    nodes: () ->
-        []
+    nodes: () -> []
 
-    clear: () ->
-        me
+    clear: () -> this
 
-kartograph.Symbol = Symbol
-
+module.exports = Symbol

@@ -16,6 +16,8 @@
     License along with this library. If not, see <http://www.gnu.org/licenses/>.
 ###
 
+Symbol = require '../symbol'
+
 class PieChart extends Symbol
     ###
     usage:
@@ -87,9 +89,6 @@ class PieChart extends Symbol
 PieChart.props = ['radius','values','styles','class','titles', 'colors','border','borderWidth']
 PieChart.layers = [] #{ id:'a', type: 'svg' }
 
-root.kartograph.PieChart = PieChart
-
-
 ###
 pie chart extension for RaphaelJS
 ###
@@ -131,3 +130,5 @@ drawPieChart = (cx, cy, r, values, labels, colors, stroke) ->
     for i of values
         process i
     chart
+
+module.exports = PieChart

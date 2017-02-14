@@ -48,13 +48,19 @@ var kartograph =
   \**************************/
 /***/ function(module, exports, __webpack_require__) {
 
-	var BBox, Kartograph, Proj, kartograph, proj, ref;
+	var BBox, Kartograph, PieChart, Proj, Symbol, SymbolGroup, kartograph, proj, ref;
 	
 	Kartograph = __webpack_require__(/*! ./core/kartograph */ 1);
 	
 	ref = __webpack_require__(/*! ./core/proj */ 18), Proj = ref.Proj, proj = ref.proj;
 	
 	BBox = __webpack_require__(/*! ./core/bbox */ 17);
+	
+	SymbolGroup = __webpack_require__(/*! ./modules/symbolgroup */ 24);
+	
+	Symbol = __webpack_require__(/*! ./modules/symbol */ 25);
+	
+	PieChart = __webpack_require__(/*! ./modules/symbols/piechart */ 26);
 	
 	kartograph = function() {
 	  return (function(func, args, ctor) {
@@ -72,7 +78,10 @@ var kartograph =
 	  map: kartograph,
 	  Proj: Proj,
 	  proj: proj,
-	  BBox: BBox
+	  BBox: BBox,
+	  SymbolGroup: SymbolGroup,
+	  Symbol: Symbol,
+	  PieChart: PieChart
 	};
 
 
@@ -12957,6 +12966,643 @@ var kartograph =
 	})();
 	
 	module.exports = MapFragment;
+
+
+/***/ },
+/* 24 */
+/*!****************************************!*\
+  !*** ./src/modules/symbolgroup.coffee ***!
+  \****************************************/
+/***/ function(module, exports, __webpack_require__) {
+
+	
+	/*
+	    kartograph - a svg mapping library
+	    Copyright (C) 2011,2012  Gregor Aisch
+	
+	    This library is free software; you can redistribute it and/or
+	    modify it under the terms of the GNU Lesser General Public
+	    License as published by the Free Software Foundation; either
+	    version 2.1 of the License, or (at your option) any later version.
+	
+	    This library is distributed in the hope that it will be useful,
+	    but WITHOUT ANY WARRANTY; without even the implied warranty of
+	    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
+	    Lesser General Public License for more details.
+	
+	    You should have received a copy of the GNU Lesser General Public
+	    License along with this library. If not, see <http://www.gnu.org/licenses/>.
+	 */
+	var Kartograph, SymbolGroup, ref, type, warn,
+	  bind = function(fn, me){ return function(){ return fn.apply(me, arguments); }; };
+	
+	Kartograph = __webpack_require__(/*! ../core/kartograph */ 1);
+	
+	ref = __webpack_require__(/*! ../utils */ 12), warn = ref.warn, type = ref.type;
+	
+	SymbolGroup = (function() {
+	
+	  /* symbol groups
+	  
+	  Usage:
+	  new $K.SymbolGroup(options);
+	  map.addSymbols(options)
+	   */
+	  function SymbolGroup(opts) {
+	    this._initTooltips = bind(this._initTooltips, this);
+	    var SymbolType, d, i, id, j, k, l, layer, len, len1, len2, len3, n, nid, o, optional, p, ref1, ref2, required;
+	    required = ['data', 'location', 'type', 'map'];
+	    optional = ['filter', 'tooltip', 'click', 'delay', 'sortBy', 'clustering', 'aggregate', 'clusteringOpts', 'mouseenter', 'mouseleave'];
+	    for (j = 0, len = required.length; j < len; j++) {
+	      p = required[j];
+	      if (opts[p] != null) {
+	        this[p] = opts[p];
+	      } else {
+	        throw new Error("SymbolGroup: missing argument '" + p + "'");
+	      }
+	    }
+	    for (k = 0, len1 = optional.length; k < len1; k++) {
+	      p = optional[k];
+	      if (opts[p] != null) {
+	        this[p] = opts[p];
+	      }
+	    }
+	    SymbolType = this.type;
+	    if (SymbolType == null) {
+	      warn('could not resolve symbol type', this.type);
+	      return;
+	    }
+	    ref1 = SymbolType.props;
+	    for (n = 0, len2 = ref1.length; n < len2; n++) {
+	      p = ref1[n];
+	      if (opts[p] != null) {
+	        this[p] = opts[p];
+	      }
+	    }
+	    this.layers = {
+	      mapcanvas: this.map.paper
+	    };
+	    ref2 = SymbolType.layers;
+	    for (o = 0, len3 = ref2.length; o < len3; o++) {
+	      l = ref2[o];
+	      nid = SymbolGroup._layerid++;
+	      id = 'sl_' + nid;
+	      if (l.type === 'svg') {
+	        layer = this.map.createSVGLayer(id);
+	      } else if (l.type === 'html') {
+	        layer = this.map.createHTMLLayer(id);
+	      }
+	      this.layers[l.id] = layer;
+	    }
+	    this.symbols = [];
+	    for (i in this.data) {
+	      d = this.data[i];
+	      if (type(this.filter) === "function") {
+	        if (this.filter(d, i)) {
+	          this.add(d, i);
+	        }
+	      } else {
+	        this.add(d, i);
+	      }
+	    }
+	    this.layout();
+	    this.render();
+	    this.map.addSymbolGroup(this);
+	  }
+	
+	
+	  /* adds a new symbol to this group */
+	
+	  SymbolGroup.prototype.add = function(data, key) {
+	    var SymbolType, j, len, ll, p, ref1, sprops, symbol;
+	    SymbolType = this.type;
+	    ll = this._evaluate(this.location, data, key);
+	    if (type(ll) === 'array') {
+	      ll = new LonLat(ll[0], ll[1]);
+	    }
+	    sprops = {
+	      layers: this.layers,
+	      location: ll,
+	      data: data,
+	      key: key != null ? key : this.symbols.length,
+	      map: this.map
+	    };
+	    ref1 = SymbolType.props;
+	    for (j = 0, len = ref1.length; j < len; j++) {
+	      p = ref1[j];
+	      if (this[p] != null) {
+	        sprops[p] = this._evaluate(this[p], data, key);
+	      }
+	    }
+	    symbol = new SymbolType(sprops);
+	    this.symbols.push(symbol);
+	    return symbol;
+	  };
+	
+	  SymbolGroup.prototype.layout = function() {
+	    var j, layer_id, len, ll, path, path_id, ref1, ref2, s, xy;
+	    ref1 = this.symbols;
+	    for (j = 0, len = ref1.length; j < len; j++) {
+	      s = ref1[j];
+	      ll = s.location;
+	      if (type(ll) === 'string') {
+	        ref2 = ll.split('.'), layer_id = ref2[0], path_id = ref2[1];
+	        path = this.map.getLayerPath(layer_id, path_id);
+	        if (path != null) {
+	          xy = this.map.viewBC.project(path.path.centroid());
+	        } else {
+	          warn('could not find layer path ' + layer_id + '.' + path_id);
+	          continue;
+	        }
+	      } else {
+	        xy = this.map.lonlat2xy(ll);
+	      }
+	      s.x = xy[0];
+	      s.y = xy[1];
+	    }
+	    return this;
+	  };
+	
+	  SymbolGroup.prototype.render = function() {
+	    var j, k, len, len1, node, ref1, ref2, ref3, s, sortBy, sortDir;
+	    if (this.sortBy) {
+	      sortDir = 'asc';
+	      if (type(this.sortBy) === "string") {
+	        this.sortBy = this.sortBy.split(' ', 2);
+	        sortBy = this.sortBy[0];
+	        sortDir = (ref1 = this.sortBy[1]) != null ? ref1 : 'asc';
+	      }
+	      this.symbols = this.symbols.sort((function(_this) {
+	        return function(a, b) {
+	          var m, va, vb;
+	          if (type(_this.sortBy) === "function") {
+	            va = _this.sortBy(a.data, a);
+	            vb = _this.sortBy(b.data, b);
+	          } else {
+	            va = a[sortBy];
+	            vb = b[sortBy];
+	          }
+	          if (va === vb) {
+	            return 0;
+	          }
+	          m = sortDir === 'asc' ? 1 : -1;
+	          if (va > vb) {
+	            return 1 * m;
+	          } else {
+	            return -1 * m;
+	          }
+	        };
+	      })(this));
+	    }
+	    ref2 = this.symbols;
+	    for (j = 0, len = ref2.length; j < len; j++) {
+	      s = ref2[j];
+	      s.render();
+	      ref3 = s.nodes();
+	      for (k = 0, len1 = ref3.length; k < len1; k++) {
+	        node = ref3[k];
+	        node.symbol = s;
+	      }
+	    }
+	    if (type(this.tooltip) === "function") {
+	      me._initTooltips();
+	    }
+	    $.each(['click', 'mouseenter', 'mouseleave'], (function(_this) {
+	      return function(i, evt) {
+	        var len2, n, ref4, results;
+	        if (type(_this[evt]) === "function") {
+	          ref4 = _this.symbols;
+	          results = [];
+	          for (n = 0, len2 = ref4.length; n < len2; n++) {
+	            s = ref4[n];
+	            results.push((function() {
+	              var len3, o, ref5, results1;
+	              ref5 = s.nodes();
+	              results1 = [];
+	              for (o = 0, len3 = ref5.length; o < len3; o++) {
+	                node = ref5[o];
+	                results1.push($(node)[evt]((function(_this) {
+	                  return function(e) {
+	                    var tgt;
+	                    tgt = e.target;
+	                    while (!tgt.symbol) {
+	                      tgt = $(tgt).parent().get(0);
+	                    }
+	                    e.stopPropagation();
+	                    return _this[evt](tgt.symbol.data, tgt.symbol, e);
+	                  };
+	                })(this)));
+	              }
+	              return results1;
+	            }).call(_this));
+	          }
+	          return results;
+	        }
+	      };
+	    })(this));
+	    return this;
+	  };
+	
+	  SymbolGroup.prototype.tooltips = function(cb) {
+	    this.tooltips = cb;
+	    this._initTooltips();
+	    return this;
+	  };
+	
+	  SymbolGroup.prototype.remove = function(filter) {
+	    var error, id, j, kept, layer, len, ref1, ref2, results, s;
+	    kept = [];
+	    ref1 = this.symbols;
+	    for (j = 0, len = ref1.length; j < len; j++) {
+	      s = ref1[j];
+	      if ((filter != null) && !filter(s.data)) {
+	        kept.push(s);
+	        continue;
+	      }
+	      try {
+	        s.clear();
+	      } catch (error1) {
+	        error = error1;
+	        warn('error: symbolgroup.remove');
+	      }
+	    }
+	    if (filter == null) {
+	      ref2 = this.layers;
+	      results = [];
+	      for (id in ref2) {
+	        layer = ref2[id];
+	        if (id !== "mapcanvas") {
+	          results.push(layer.remove());
+	        }
+	      }
+	      return results;
+	    } else {
+	      return this.symbols = kept;
+	    }
+	  };
+	
+	  SymbolGroup.prototype._evaluate = function(prop, data, key) {
+	
+	    /* evaluates a property function or returns a static value */
+	    var val;
+	    if (type(prop) === 'function') {
+	      return val = prop(data, key);
+	    } else {
+	      return val = prop;
+	    }
+	  };
+	
+	  SymbolGroup.prototype._initTooltips = function() {
+	    var cfg, j, k, len, len1, node, ref1, ref2, s, tooltips, tt;
+	    tooltips = this.tooltip;
+	    ref1 = this.symbols;
+	    for (j = 0, len = ref1.length; j < len; j++) {
+	      s = ref1[j];
+	      cfg = {
+	        position: {
+	          target: 'mouse',
+	          viewport: $(window),
+	          adjust: {
+	            x: 7,
+	            y: 7
+	          }
+	        },
+	        show: {
+	          delay: 20
+	        },
+	        content: {},
+	        events: {
+	          show: function(evt, api) {
+	            return $('.qtip').filter(function() {
+	              return this !== api.elements.tooltip.get(0);
+	            }).hide();
+	          }
+	        }
+	      };
+	      tt = tooltips(s.data, s.key);
+	      if (type(tt) === "string") {
+	        cfg.content.text = tt;
+	      } else if (type(tt) === "array") {
+	        cfg.content.title = tt[0];
+	        cfg.content.text = tt[1];
+	      }
+	      ref2 = s.nodes();
+	      for (k = 0, len1 = ref2.length; k < len1; k++) {
+	        node = ref2[k];
+	        $(node).qtip(cfg);
+	      }
+	    }
+	  };
+	
+	  SymbolGroup.prototype.onResize = function() {
+	    var j, len, ref1, s;
+	    this.layout();
+	    ref1 = this.symbols;
+	    for (j = 0, len = ref1.length; j < len; j++) {
+	      s = ref1[j];
+	      s.update();
+	    }
+	  };
+	
+	  SymbolGroup.prototype.update = function(opts, duration, easing) {
+	    var j, k, len, len1, p, ref1, ref2, s;
+	    if (opts == null) {
+	      opts = {};
+	    }
+	    ref1 = this.symbols;
+	    for (j = 0, len = ref1.length; j < len; j++) {
+	      s = ref1[j];
+	      ref2 = this.type.props;
+	      for (k = 0, len1 = ref2.length; k < len1; k++) {
+	        p = ref2[k];
+	        if (opts[p] != null) {
+	          s[p] = this._evaluate(opts[p], s.data);
+	        } else if (this[p] != null) {
+	          s[p] = this._evaluate(this[p], s.data);
+	        }
+	      }
+	      s.update(duration, easing);
+	    }
+	    return this;
+	  };
+	
+	  return SymbolGroup;
+	
+	})();
+	
+	SymbolGroup._layerid = 0;
+	
+	Kartograph.prototype.addSymbols = function(opts) {
+	  opts.map = this;
+	  return new SymbolGroup(opts);
+	};
+	
+	module.exports = SymbolGroup;
+
+
+/***/ },
+/* 25 */
+/*!***********************************!*\
+  !*** ./src/modules/symbol.coffee ***!
+  \***********************************/
+/***/ function(module, exports) {
+
+	
+	/*
+	    kartograph - a svg mapping library
+	    Copyright (C) 2011,2012  Gregor Aisch
+	
+	    This library is free software; you can redistribute it and/or
+	    modify it under the terms of the GNU Lesser General Public
+	    License as published by the Free Software Foundation; either
+	    version 2.1 of the License, or (at your option) any later version.
+	
+	    This library is distributed in the hope that it will be useful,
+	    but WITHOUT ANY WARRANTY; without even the implied warranty of
+	    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
+	    Lesser General Public License for more details.
+	
+	    You should have received a copy of the GNU Lesser General Public
+	    License along with this library. If not, see <http://www.gnu.org/licenses/>.
+	 */
+	var Symbol;
+	
+	Symbol = (function() {
+	
+	  /* base class for all symbols */
+	  function Symbol(opts) {
+	    this.location = opts.location;
+	    this.data = opts.data;
+	    this.map = opts.map;
+	    this.layers = opts.layers;
+	    this.key = opts.key;
+	    this.x = opts.x;
+	    this.y = opts.y;
+	  }
+	
+	  Symbol.prototype.init = function() {
+	    return this;
+	  };
+	
+	  Symbol.prototype.overlaps = function(symbol) {
+	    return false;
+	  };
+	
+	  Symbol.prototype.update = function(opts) {
+	    return this;
+	  };
+	
+	  Symbol.prototype.nodes = function() {
+	    return [];
+	  };
+	
+	  Symbol.prototype.clear = function() {
+	    return this;
+	  };
+	
+	  return Symbol;
+	
+	})();
+	
+	module.exports = Symbol;
+
+
+/***/ },
+/* 26 */
+/*!*********************************************!*\
+  !*** ./src/modules/symbols/piechart.coffee ***!
+  \*********************************************/
+/***/ function(module, exports, __webpack_require__) {
+
+	
+	/*
+	    kartograph - a svg mapping library
+	    Copyright (C) 2011,2012  Gregor Aisch
+	
+	    This library is free software; you can redistribute it and/or
+	    modify it under the terms of the GNU Lesser General Public
+	    License as published by the Free Software Foundation; either
+	    version 2.1 of the License, or (at your option) any later version.
+	
+	    This library is distributed in the hope that it will be useful,
+	    but WITHOUT ANY WARRANTY; without even the implied warranty of
+	    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
+	    Lesser General Public License for more details.
+	
+	    You should have received a copy of the GNU Lesser General Public
+	    License along with this library. If not, see <http://www.gnu.org/licenses/>.
+	 */
+	var PieChart, Symbol, drawPieChart,
+	  extend = function(child, parent) { for (var key in parent) { if (hasProp.call(parent, key)) child[key] = parent[key]; } function ctor() { this.constructor = child; } ctor.prototype = parent.prototype; child.prototype = new ctor(); child.__super__ = parent.prototype; return child; },
+	  hasProp = {}.hasOwnProperty;
+	
+	Symbol = __webpack_require__(/*! ../symbol */ 25);
+	
+	PieChart = (function(superClass) {
+	  extend(PieChart, superClass);
+	
+	
+	  /*
+	  usage:
+	  new SymbolMap({
+	      map: map,
+	      radius: 10
+	      data: [25,75],
+	      colors: ['red', 'blue'],
+	      titles: ['red pie', 'blue pie']
+	  })
+	   */
+	
+	  function PieChart(opts) {
+	    var base, ref, ref1, ref2, ref3, ref4, ref5, ref6, ref7;
+	    PieChart.__super__.constructor.call(this, opts);
+	    this.radius = (ref = opts.radius) != null ? ref : 4;
+	    this.styles = (ref1 = opts.styles) != null ? ref1 : '';
+	    this.colors = (ref2 = opts.colors) != null ? ref2 : ['#3cc', '#c3c', '#33c', '#cc3'];
+	    this.titles = (ref3 = opts.titles) != null ? ref3 : ['', '', '', '', ''];
+	    this.values = (ref4 = opts.values) != null ? ref4 : [];
+	    this.border = (ref5 = opts.border) != null ? ref5 : false;
+	    this.borderWidth = (ref6 = opts.borderWidth) != null ? ref6 : 2;
+	    this["class"] = (ref7 = opts["class"]) != null ? ref7 : 'piechart';
+	    if ((base = Raphael.fn).pieChart == null) {
+	      base.pieChart = drawPieChart;
+	    }
+	  }
+	
+	  PieChart.prototype.overlaps = function(bubble) {
+	    var dx, dy, r1, r2, ref, ref1, x1, x2, y1, y2;
+	    ref = [this.x, this.y, this.radius], x1 = ref[0], y1 = ref[1], r1 = ref[2];
+	    ref1 = [bubble.x, bubble.y, bubble.radius], x2 = ref1[0], y2 = ref1[1], r2 = ref1[2];
+	    if (x1 - r1 > x2 + r2 || x1 + r1 < x2 - r2 || y1 - r1 > y2 + r2 || y1 + r1 < y2 - r2) {
+	      return false;
+	    }
+	    dx = x1 - x2;
+	    dy = y1 - y2;
+	    if (dx * dx + dy * dy > (r1 + r2) * (r1 + r2)) {
+	      return false;
+	    }
+	    return true;
+	  };
+	
+	  PieChart.prototype.render = function(layers) {
+	    var bg;
+	    if (this.border != null) {
+	      bg = this.layers.mapcanvas.circle(this.x, this.y, this.radius + this.borderWidth).attr({
+	        stroke: 'none',
+	        fill: this.border
+	      });
+	    }
+	    this.chart = this.layers.mapcanvas.pieChart(this.x, this.y, this.radius, this.values, this.titles, this.colors, "none");
+	    this.chart.push(bg);
+	    return this;
+	  };
+	
+	  PieChart.prototype.update = function(opts) {
+	    var path;
+	    return;
+	    this.path.attr({
+	      x: this.x,
+	      y: this.y,
+	      r: this.radius
+	    });
+	    path = this.path;
+	    path.node.setAttribute('style', this.styles[0]);
+	    path.node.setAttribute('class', this["class"]);
+	    if (this.title != null) {
+	      path.attr('title', this.titles[0]);
+	    }
+	    return this;
+	  };
+	
+	  PieChart.prototype.clear = function() {
+	    var k, len, p, ref;
+	    ref = this.chart;
+	    for (k = 0, len = ref.length; k < len; k++) {
+	      p = ref[k];
+	      p.remove();
+	    }
+	    return void 0;
+	  };
+	
+	  PieChart.prototype.nodes = function() {
+	    var el, k, len, ref, results;
+	    ref = this.chart;
+	    results = [];
+	    for (k = 0, len = ref.length; k < len; k++) {
+	      el = ref[k];
+	      results.push(el.node);
+	    }
+	    return results;
+	  };
+	
+	  return PieChart;
+	
+	})(Symbol);
+	
+	PieChart.props = ['radius', 'values', 'styles', 'class', 'titles', 'colors', 'border', 'borderWidth'];
+	
+	PieChart.layers = [];
+	
+	
+	/*
+	pie chart extension for RaphaelJS
+	 */
+	
+	drawPieChart = function(cx, cy, r, values, labels, colors, stroke) {
+	  var angle, chart, i, k, len, paper, process, rad, sector, total, v;
+	  if (isNaN(cx) || isNaN(cy) || isNaN(r)) {
+	    return [];
+	  }
+	  paper = this;
+	  rad = Math.PI / 180;
+	  chart = paper.set();
+	  sector = function(cx, cy, r, startAngle, endAngle, params) {
+	    var x1, x2, y1, y2;
+	    x1 = cx + r * Math.cos(-startAngle * rad);
+	    x2 = cx + r * Math.cos(-endAngle * rad);
+	    y1 = cy + r * Math.sin(-startAngle * rad);
+	    y2 = cy + r * Math.sin(-endAngle * rad);
+	    return paper.path(["M", cx, cy, "L", x1, y1, "A", r, r, 0, +(endAngle - startAngle > 180), 0, x2, y2, "z"]).attr(params);
+	  };
+	  angle = -270;
+	  total = 0;
+	  process = function(j) {
+	    var angleplus, color, delta, ms, p, popangle, value;
+	    value = values[j];
+	    angleplus = 360 * value / total;
+	    popangle = angle + (angleplus * 0.5);
+	    color = colors[j];
+	    ms = 500;
+	    delta = 30;
+	    p = sector(cx, cy, r, angle, angle + angleplus, {
+	      fill: color,
+	      stroke: stroke,
+	      'stroke-width': 1
+	    });
+	    p.mouseover(function() {
+	      p.stop().animate({
+	        transform: "s1.1 1.1 " + cx + " " + cy
+	      }, ms, "elastic");
+	    });
+	    p.mouseout(function() {
+	      p.stop().animate({
+	        transform: ""
+	      }, ms, "elastic");
+	    });
+	    angle += angleplus;
+	    chart.push(p);
+	  };
+	  for (k = 0, len = values.length; k < len; k++) {
+	    v = values[k];
+	    total += v;
+	  }
+	  for (i in values) {
+	    process(i);
+	  }
+	  return chart;
+	};
+	
+	module.exports = PieChart;
 
 
 /***/ }
