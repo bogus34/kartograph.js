@@ -54,6 +54,8 @@ class MapLayer
         @paths.push svg_paths...
         undefined
 
+    getPathsData: -> $.map @paths, p -> $(p).data()
+
     # setView: (view) ->
     #     ###
     #     # after resizing of the map, each layer gets a new view

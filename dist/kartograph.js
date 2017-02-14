@@ -12415,6 +12415,12 @@ var kartograph =
 	    return void 0;
 	  };
 	
+	  MapLayer.prototype.getPathsData = function() {
+	    return $.map(this.paths, p(function() {
+	      return $(p).data();
+	    }));
+	  };
+	
 	  MapLayer.prototype.setView = function() {};
 	
 	  MapLayer.prototype.remove = function() {
