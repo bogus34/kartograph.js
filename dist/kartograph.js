@@ -13438,11 +13438,13 @@ var kartograph =
 	    You should have received a copy of the GNU Lesser General Public
 	    License along with this library. If not, see <http://www.gnu.org/licenses/>.
 	 */
-	var PieChart, Symbol, drawPieChart,
+	var PieChart, Snap, Symbol, drawChoroLegend, drawCircleSizeLegend, drawPieChart, drawPiechartLegend, pieChartPlugin,
 	  extend = function(child, parent) { for (var key in parent) { if (hasProp.call(parent, key)) child[key] = parent[key]; } function ctor() { this.constructor = child; } ctor.prototype = parent.prototype; child.prototype = new ctor(); child.__super__ = parent.prototype; return child; },
 	  hasProp = {}.hasOwnProperty;
 	
 	Symbol = __webpack_require__(/*! ../symbol */ 25);
+	
+	Snap = __webpack_require__(/*! ../../vendor/snap */ 3);
 	
 	PieChart = (function(superClass) {
 	  extend(PieChart, superClass);
@@ -13460,7 +13462,7 @@ var kartograph =
 	   */
 	
 	  function PieChart(opts) {
-	    var base, ref, ref1, ref2, ref3, ref4, ref5, ref6, ref7;
+	    var ref, ref1, ref2, ref3, ref4, ref5, ref6, ref7;
 	    PieChart.__super__.constructor.call(this, opts);
 	    this.radius = (ref = opts.radius) != null ? ref : 4;
 	    this.styles = (ref1 = opts.styles) != null ? ref1 : '';
@@ -13470,9 +13472,6 @@ var kartograph =
 	    this.border = (ref5 = opts.border) != null ? ref5 : false;
 	    this.borderWidth = (ref6 = opts.borderWidth) != null ? ref6 : 2;
 	    this["class"] = (ref7 = opts["class"]) != null ? ref7 : 'piechart';
-	    if ((base = Raphael.fn).pieChart == null) {
-	      base.pieChart = drawPieChart;
-	    }
 	  }
 	
 	  PieChart.prototype.overlaps = function(bubble) {
@@ -13549,11 +13548,6 @@ var kartograph =
 	
 	PieChart.layers = [];
 	
-	
-	/*
-	pie chart extension for RaphaelJS
-	 */
-	
 	drawPieChart = function(cx, cy, r, values, labels, colors, stroke) {
 	  var angle, chart, i, k, len, paper, process, rad, sector, total, v;
 	  if (isNaN(cx) || isNaN(cy) || isNaN(r)) {
@@ -13607,6 +13601,152 @@ var kartograph =
 	  }
 	  return chart;
 	};
+	
+	drawChoroLegend = function(x, y, w, textsize, color, real_min, real_max, decl_min, step, title) {
+	  var ch_sc_M, ch_sc_m, cw, i, lsteps, paper, r;
+	  r = void 0;
+	  i = void 0;
+	  paper = this;
+	  ch_sc_m = Math.floor((real_min - decl_min) / step);
+	  ch_sc_M = Math.ceil((real_max - decl_min) / step);
+	  lsteps = ch_sc_M - ch_sc_m;
+	  cw = w / lsteps;
+	  y += Math.floor(title.split('\n').length / 2) * textsize;
+	  r = paper.text(x + w / 2, y, title).attr({
+	    'font-size': textsize
+	  });
+	  jQuery(r.node).addClass('legend');
+	  i = 0;
+	  while (i < lsteps) {
+	    r = paper.rect(x + i * cw, y + textsize + 2, cw, textsize).attr({
+	      stroke: 'none',
+	      fill: color(Math.ceil(decl_min + step * (i + ch_sc_m)))
+	    });
+	    jQuery(r.node).addClass('legend');
+	    i++;
+	  }
+	  r = paper.text(x, y + 2.5 * textsize + 4, real_min).attr({
+	    'font-size': textsize
+	  });
+	  jQuery(r.node).addClass('legend');
+	  i = 1;
+	  while (i < lsteps) {
+	    r = paper.text(x + i * cw, y + 2.5 * textsize + 4, decl_min + Math.round(step * (i + ch_sc_m))).attr({
+	      'font-size': textsize
+	    });
+	    jQuery(r.node).addClass('legend');
+	    i++;
+	  }
+	  r = paper.text(x + lsteps * cw, y + 2.5 * textsize + 4, real_max).attr({
+	    'font-size': textsize
+	  });
+	  return jQuery(r.node).addClass('legend');
+	};
+	
+	drawPiechartLegend = function(cx, cy, R, sdiag_label, sdiag_color, textsize) {
+	  var angle, angstep, i, label_num, nsteps, paper, r, rad, results, sc, sl, str_color, vals, vc, vstep;
+	  i = void 0;
+	  r = void 0;
+	  paper = this;
+	  vals = [0.5];
+	  str_color = ['#fff'];
+	  nsteps = sdiag_label.length;
+	  angstep = 90 / nsteps;
+	  rad = Math.PI / 180;
+	  vstep = nsteps > 1 ? Math.max(2 * R, textsize * nsteps * 1.5) / (nsteps - 1) : 0;
+	  angle = angstep - 90;
+	  vc = cy - (vstep * (nsteps - 1) / 2);
+	  label_num = sdiag_label.length - 1;
+	  while (angle < 90) {
+	    r = paper.path(['M', cx + R * Math.cos(angle * rad), cy + R * Math.sin(angle * rad), 'L', Math.abs(angle) > 1 ? cx + (vc - cy) / Math.tan(angle * rad) : cx + R * Math.cos(angle * rad), vc, 'L', cx + 1.5 * R, vc]);
+	    jQuery(r.node).addClass('legend');
+	    r = paper.text(cx + 1.5 * R + 2, vc, sdiag_label[label_num]).attr({
+	      'font-size': textsize,
+	      'text-anchor': 'start'
+	    });
+	    jQuery(r.node).addClass('legend');
+	    vc += vstep;
+	    angle += 2 * angstep;
+	    label_num--;
+	  }
+	  sl = sdiag_label.slice(0);
+	  sc = sdiag_color.slice(0);
+	  sl.unshift('');
+	  sc.unshift('none');
+	  i = 0;
+	  while (i < nsteps) {
+	    vals.push(0.5 / nsteps);
+	    str_color.push('#fff');
+	    i++;
+	  }
+	  r = paper.pieChart(cx, cy, R, vals, sl, sc, str_color);
+	  i = 0;
+	  results = [];
+	  while (i < nsteps + 1) {
+	    jQuery(r.items[i].node).addClass('legend');
+	    results.push(i++);
+	  }
+	  return results;
+	};
+	
+	drawCircleSizeLegend = function(cx, cy, R, maxv, minv, scale, textsize, props) {
+	  var i, minR, ngrad, paper, r, radius, radlabel, value_step, vstep;
+	  paper = this;
+	  r = void 0;
+	  i = void 0;
+	  vstep = 1.5 * textsize;
+	  ngrad = Math.round(2 * R / vstep);
+	  minR = Math.round(Math.sqrt(minv) * scale);
+	  r = paper.path(['M', cx, cy + R, 'A', R, R, 0, 0, 1, cx, cy + R - (2 * R)]).attr(props);
+	  jQuery(r.node).addClass('legend');
+	  r = paper.text(cx + 2, cy + R - (2 * R), maxv.toLocaleString()).attr({
+	    'font-size': textsize,
+	    'text-anchor': 'start'
+	  });
+	  jQuery(r.node).addClass('legend');
+	  i = ngrad - 1;
+	  while (i > 0) {
+	    radlabel = Math.round(Math.pow(i * R / (ngrad * scale), 2));
+	    value_step = Math.pow(10, Math.round(Math.log10(radlabel - Math.round(Math.pow((i - 1) * R / (ngrad * scale), 2)))));
+	    radlabel = Math.round(radlabel / value_step) * value_step;
+	    radius = Math.sqrt(radlabel) * scale;
+	    if (radlabel > 0 && 2 * (R - radius) > vstep) {
+	      r = paper.path(['M', cx, cy + R, 'A', radius, radius, 0, 0, 1, cx, cy + R - (2 * radius)]).attr(props);
+	      jQuery(r.node).addClass('legend');
+	      r = paper.text(cx + 2, cy + R - (2 * radius), radlabel.toLocaleString()).attr({
+	        'font-size': textsize,
+	        'text-anchor': 'start'
+	      });
+	      jQuery(r.node).addClass('legend');
+	    }
+	    i--;
+	  }
+	  if (minR !== R) {
+	    r = paper.path(['M', cx, cy + R, 'A', minR, minR, 0, 0, 1, cx, cy + R - (2 * minR)]).attr(props);
+	    jQuery(r.node).addClass('legend');
+	    r = paper.text(cx + 2, cy + R - (2 * minR), minv.toLocaleString()).attr({
+	      'font-size': textsize,
+	      'text-anchor': 'start'
+	    });
+	    return jQuery(r.node).addClass('legend');
+	  }
+	};
+	
+	pieChartPlugin = function(Snap, Element, Paper) {
+	  var base, base1, base2, base3;
+	  if ((base = Paper.prototype).pieChart == null) {
+	    base.pieChart = drawPieChart;
+	  }
+	  if ((base1 = Paper.prototype).choroLegend == null) {
+	    base1.choroLegend = drawChoroLegend;
+	  }
+	  if ((base2 = Paper.prototype).pieChartLegend == null) {
+	    base2.pieChartLegend = drawPiechartLegend;
+	  }
+	  return (base3 = Paper.prototype).circleSizeLegend != null ? base3.circleSizeLegend : base3.circleSizeLegend = drawCircleSizeLegend;
+	};
+	
+	Snap.plugin(pieChartPlugin);
 	
 	module.exports = PieChart;
 
