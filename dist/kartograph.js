@@ -12416,9 +12416,9 @@ var kartograph =
 	  };
 	
 	  MapLayer.prototype.getPathsData = function() {
-	    return $.map(this.paths, p(function() {
+	    return $.map(this.paths, function(p) {
 	      return $(p).data();
-	    }));
+	    });
 	  };
 	
 	  MapLayer.prototype.setView = function() {};

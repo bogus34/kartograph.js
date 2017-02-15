@@ -54,7 +54,7 @@ class MapLayer
         @paths.push svg_paths...
         undefined
 
-    getPathsData: -> $.map @paths, p -> $(p).data()
+    getPathsData: -> $.map @paths, (p) -> $(p).data()
 
     # setView: (view) ->
     #     ###
