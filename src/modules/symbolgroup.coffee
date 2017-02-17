@@ -17,6 +17,7 @@
 ###
 
 Kartograph = require '../core/kartograph'
+{LonLat} = require '../core/lonlat'
 {warn, type} = require '../utils'
 
 class SymbolGroup

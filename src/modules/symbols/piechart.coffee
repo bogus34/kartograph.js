@@ -72,6 +72,7 @@ class PieChart extends Symbol
 
     update: (opts) ->
         return
+
         @path.attr
             x: @x
             y: @y
@@ -99,15 +100,25 @@ drawPieChart = (cx, cy, r, values, labels, colors, stroke) ->
     if isNaN(cx) or isNaN(cy) or isNaN(r) then return []
     paper = this
     rad = Math.PI/180
-    chart = paper.set()
-    sector = (cx,cy,r,startAngle,endAngle,params) ->
+    chart = Snap.set()
+
+    angle = -270
+    total = 0
+
+    sector = (cx, cy, r, startAngle, endAngle, params) ->
         x1 = cx + r * Math.cos(-startAngle * rad)
         x2 = cx + r * Math.cos(-endAngle * rad)
         y1 = cy + r * Math.sin(-startAngle * rad)
         y2 = cy + r * Math.sin(-endAngle * rad)
-        paper.path(["M", cx, cy, "L", x1, y1, "A", r, r, 0, +(endAngle - startAngle > 180), 0, x2, y2, "z"]).attr(params)
-    angle = -270
-    total = 0
+        #["M", cx, cy, "L", x1, y1, "A", r, r, 0, +(endAngle - startAngle > 180), 0, x2, y2, "Z"]
+        pathStr = [
+            ['M'], [cx, cy]
+            ['L'], [x1, y1]
+            ['A'], [r, r, 0, +(endAngle - startAngle > 180), 0, x2, y2]
+            ['Z']
+        ].map( (a) -> a.join(',') ).join('')
+        paper.path(pathStr).attr(params)
+
     process = (j) ->
         value = values[j]
         angleplus = 360*value/total
@@ -115,10 +126,12 @@ drawPieChart = (cx, cy, r, values, labels, colors, stroke) ->
         color = colors[j]
         ms = 500
         delta = 30
-        p = sector cx, cy, r, angle, angle+angleplus,
+
+        p = sector cx, cy, r, angle, angle + angleplus,
             fill: color
             stroke: stroke
             'stroke-width': 1
+
         p.mouseover () ->
             p.stop().animate { transform: "s1.1 1.1 " + cx + " " + cy }, ms, "elastic"
             return
@@ -127,11 +140,10 @@ drawPieChart = (cx, cy, r, values, labels, colors, stroke) ->
             return
         angle += angleplus
         chart.push p
-        return
-    for v in values
-        total += v
-    for i of values
-        process i
+
+    total += v for v in values
+    process i for i of values
+
     chart
 
 drawChoroLegend = (x, y, w, textsize, color, real_min, real_max, decl_min, step, title) ->

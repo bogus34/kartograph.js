@@ -37,7 +37,7 @@ class MapFragment
 
                     @runCallbacks null, @svg
 
-                error: (a, b, c) ->
+                error: (a, b, c) =>
                     @runCallbacks a
 
     runCallbacks: (err, res) =>

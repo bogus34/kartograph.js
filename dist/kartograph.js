@@ -12945,9 +12945,11 @@ var kartograph =
 	            return _this.runCallbacks(null, _this.svg);
 	          };
 	        })(this),
-	        error: function(a, b, c) {
-	          return this.runCallbacks(a);
-	        }
+	        error: (function(_this) {
+	          return function(a, b, c) {
+	            return _this.runCallbacks(a);
+	          };
+	        })(this)
 	      });
 	    }
 	  };
@@ -12999,10 +13001,12 @@ var kartograph =
 	    You should have received a copy of the GNU Lesser General Public
 	    License along with this library. If not, see <http://www.gnu.org/licenses/>.
 	 */
-	var Kartograph, SymbolGroup, ref, type, warn,
+	var Kartograph, LonLat, SymbolGroup, ref, type, warn,
 	  bind = function(fn, me){ return function(){ return fn.apply(me, arguments); }; };
 	
 	Kartograph = __webpack_require__(/*! ../core/kartograph */ 1);
+	
+	LonLat = __webpack_require__(/*! ../core/lonlat */ 20).LonLat;
 	
 	ref = __webpack_require__(/*! ../utils */ 12), warn = ref.warn, type = ref.type;
 	
@@ -13555,17 +13559,20 @@ var kartograph =
 	  }
 	  paper = this;
 	  rad = Math.PI / 180;
-	  chart = paper.set();
+	  chart = Snap.set();
+	  angle = -270;
+	  total = 0;
 	  sector = function(cx, cy, r, startAngle, endAngle, params) {
-	    var x1, x2, y1, y2;
+	    var pathStr, x1, x2, y1, y2;
 	    x1 = cx + r * Math.cos(-startAngle * rad);
 	    x2 = cx + r * Math.cos(-endAngle * rad);
 	    y1 = cy + r * Math.sin(-startAngle * rad);
 	    y2 = cy + r * Math.sin(-endAngle * rad);
-	    return paper.path(["M", cx, cy, "L", x1, y1, "A", r, r, 0, +(endAngle - startAngle > 180), 0, x2, y2, "z"]).attr(params);
+	    pathStr = [['M'], [cx, cy], ['L'], [x1, y1], ['A'], [r, r, 0, +(endAngle - startAngle > 180), 0, x2, y2], ['Z']].map(function(a) {
+	      return a.join(',');
+	    }).join('');
+	    return paper.path(pathStr).attr(params);
 	  };
-	  angle = -270;
-	  total = 0;
 	  process = function(j) {
 	    var angleplus, color, delta, ms, p, popangle, value;
 	    value = values[j];
@@ -13590,7 +13597,7 @@ var kartograph =
 	      }, ms, "elastic");
 	    });
 	    angle += angleplus;
-	    chart.push(p);
+	    return chart.push(p);
 	  };
 	  for (k = 0, len = values.length; k < len; k++) {
 	    v = values[k];
