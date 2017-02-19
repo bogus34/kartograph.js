@@ -13511,8 +13511,10 @@ var kartograph =
 	      style: this.styles,
 	      "class": this["class"]
 	    });
-	    if (this.title != null) {
-	      this.chart.attr('title', this.titles[0]);
+	    if (this.titles != null) {
+	      this.chart.attr({
+	        title: this.titles[0]
+	      });
 	    }
 	    return this;
 	  };

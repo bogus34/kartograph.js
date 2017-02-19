@@ -75,7 +75,7 @@ class PieChart extends Symbol
             style: @styles
             class: @class
 
-        @chart.attr 'title', @titles[0] if @title?
+        @chart.attr(title:  @titles[0]) if @titles?
 
         this
 
