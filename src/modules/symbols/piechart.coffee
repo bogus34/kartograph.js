@@ -16,6 +16,7 @@
     License along with this library. If not, see <http://www.gnu.org/licenses/>.
 ###
 
+$ = require 'jquery'
 Symbol = require '../symbol'
 Snap = require '../../vendor/snap'
 
@@ -152,23 +153,23 @@ drawChoroLegend = (x, y, w, textsize, color, real_min, real_max, decl_min, step,
     cw = w / lsteps
     y += Math.floor(title.split('\n').length / 2) * textsize
     r = paper.text(x + w / 2, y, title).attr('font-size': textsize)
-    jQuery(r.node).addClass 'legend'
+    $(r.node).addClass 'legend'
     i = 0
     while i < lsteps
         r = paper.rect(x + i * cw, y + textsize + 2, cw, textsize).attr(
             stroke: 'none'
             fill: color(Math.ceil(decl_min + step * (i + ch_sc_m))))
-        jQuery(r.node).addClass 'legend'
+        $(r.node).addClass 'legend'
         i++
     r = paper.text(x, y + 2.5 * textsize + 4, real_min).attr('font-size': textsize)
-    jQuery(r.node).addClass 'legend'
+    $(r.node).addClass 'legend'
     i = 1
     while i < lsteps
         r = paper.text(x + i * cw, y + 2.5 * textsize + 4, decl_min + Math.round(step * (i + ch_sc_m))).attr('font-size': textsize)
-        jQuery(r.node).addClass 'legend'
+        $(r.node).addClass 'legend'
         i++
     r = paper.text(x + lsteps * cw, y + 2.5 * textsize + 4, real_max).attr('font-size': textsize)
-    jQuery(r.node).addClass 'legend'
+    $(r.node).addClass 'legend'
 
 drawPiechartLegend = (cx, cy, R, sdiag_label, sdiag_color, textsize) ->
     i = undefined
@@ -195,11 +196,11 @@ drawPiechartLegend = (cx, cy, R, sdiag_label, sdiag_color, textsize) ->
             cx + 1.5 * R
             vc
         ])
-        jQuery(r.node).addClass 'legend'
+        $(r.node).addClass 'legend'
         r = paper.text(cx + 1.5 * R + 2, vc, sdiag_label[label_num]).attr(
             'font-size': textsize
             'text-anchor': 'start')
-        jQuery(r.node).addClass 'legend'
+        $(r.node).addClass 'legend'
         vc += vstep
         angle += 2 * angstep
         label_num--
@@ -215,7 +216,7 @@ drawPiechartLegend = (cx, cy, R, sdiag_label, sdiag_color, textsize) ->
     r = paper.pieChart(cx, cy, R, vals, sl, sc, str_color)
     i = 0
     while i < nsteps + 1
-        jQuery(r.items[i].node).addClass 'legend'
+        $(r.items[i].node).addClass 'legend'
         i++
 
 drawCircleSizeLegend = (cx, cy, R, maxv, minv, scale, textsize, props) ->
@@ -238,11 +239,11 @@ drawCircleSizeLegend = (cx, cy, R, maxv, minv, scale, textsize, props) ->
         cx
         cy + R - (2 * R)
     ]).attr(props)
-    jQuery(r.node).addClass 'legend'
+    $(r.node).addClass 'legend'
     r = paper.text(cx + 2, cy + R - (2 * R), maxv.toLocaleString()).attr(
         'font-size': textsize
         'text-anchor': 'start')
-    jQuery(r.node).addClass 'legend'
+    $(r.node).addClass 'legend'
     i = ngrad - 1
     while i > 0
         radlabel = Math.round((i * R / (ngrad * scale)) ** 2)
@@ -263,11 +264,11 @@ drawCircleSizeLegend = (cx, cy, R, maxv, minv, scale, textsize, props) ->
                 cx
                 cy + R - (2 * radius)
             ]).attr(props)
-            jQuery(r.node).addClass 'legend'
+            $(r.node).addClass 'legend'
             r = paper.text(cx + 2, cy + R - (2 * radius), radlabel.toLocaleString()).attr(
                 'font-size': textsize
                 'text-anchor': 'start')
-            jQuery(r.node).addClass 'legend'
+            $(r.node).addClass 'legend'
         i--
     if minR != R
         r = paper.path([
@@ -283,11 +284,11 @@ drawCircleSizeLegend = (cx, cy, R, maxv, minv, scale, textsize, props) ->
             cx
             cy + R - (2 * minR)
         ]).attr(props)
-        jQuery(r.node).addClass 'legend'
+        $(r.node).addClass 'legend'
         r = paper.text(cx + 2, cy + R - (2 * minR), minv.toLocaleString()).attr(
             'font-size': textsize
             'text-anchor': 'start')
-        jQuery(r.node).addClass 'legend'
+        $(r.node).addClass 'legend'
 
 pieChartPlugin = (Snap, Element, Paper) ->
     Paper::pieChart ?= drawPieChart

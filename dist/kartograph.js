@@ -13001,8 +13001,10 @@ var kartograph =
 	    You should have received a copy of the GNU Lesser General Public
 	    License along with this library. If not, see <http://www.gnu.org/licenses/>.
 	 */
-	var Kartograph, LonLat, SymbolGroup, ref, type, warn,
+	var $, Kartograph, LonLat, SymbolGroup, ref, type, warn,
 	  bind = function(fn, me){ return function(){ return fn.apply(me, arguments); }; };
+	
+	$ = __webpack_require__(/*! jquery */ 2);
 	
 	Kartograph = __webpack_require__(/*! ../core/kartograph */ 1);
 	
@@ -13442,9 +13444,11 @@ var kartograph =
 	    You should have received a copy of the GNU Lesser General Public
 	    License along with this library. If not, see <http://www.gnu.org/licenses/>.
 	 */
-	var PieChart, Snap, Symbol, drawChoroLegend, drawCircleSizeLegend, drawPieChart, drawPiechartLegend, pieChartPlugin,
+	var $, PieChart, Snap, Symbol, drawChoroLegend, drawCircleSizeLegend, drawPieChart, drawPiechartLegend, pieChartPlugin,
 	  extend = function(child, parent) { for (var key in parent) { if (hasProp.call(parent, key)) child[key] = parent[key]; } function ctor() { this.constructor = child; } ctor.prototype = parent.prototype; child.prototype = new ctor(); child.__super__ = parent.prototype; return child; },
 	  hasProp = {}.hasOwnProperty;
+	
+	$ = __webpack_require__(/*! jquery */ 2);
 	
 	Symbol = __webpack_require__(/*! ../symbol */ 25);
 	
@@ -13616,32 +13620,32 @@ var kartograph =
 	  r = paper.text(x + w / 2, y, title).attr({
 	    'font-size': textsize
 	  });
-	  jQuery(r.node).addClass('legend');
+	  $(r.node).addClass('legend');
 	  i = 0;
 	  while (i < lsteps) {
 	    r = paper.rect(x + i * cw, y + textsize + 2, cw, textsize).attr({
 	      stroke: 'none',
 	      fill: color(Math.ceil(decl_min + step * (i + ch_sc_m)))
 	    });
-	    jQuery(r.node).addClass('legend');
+	    $(r.node).addClass('legend');
 	    i++;
 	  }
 	  r = paper.text(x, y + 2.5 * textsize + 4, real_min).attr({
 	    'font-size': textsize
 	  });
-	  jQuery(r.node).addClass('legend');
+	  $(r.node).addClass('legend');
 	  i = 1;
 	  while (i < lsteps) {
 	    r = paper.text(x + i * cw, y + 2.5 * textsize + 4, decl_min + Math.round(step * (i + ch_sc_m))).attr({
 	      'font-size': textsize
 	    });
-	    jQuery(r.node).addClass('legend');
+	    $(r.node).addClass('legend');
 	    i++;
 	  }
 	  r = paper.text(x + lsteps * cw, y + 2.5 * textsize + 4, real_max).attr({
 	    'font-size': textsize
 	  });
-	  return jQuery(r.node).addClass('legend');
+	  return $(r.node).addClass('legend');
 	};
 	
 	drawPiechartLegend = function(cx, cy, R, sdiag_label, sdiag_color, textsize) {
@@ -13660,12 +13664,12 @@ var kartograph =
 	  label_num = sdiag_label.length - 1;
 	  while (angle < 90) {
 	    r = paper.path(['M', cx + R * Math.cos(angle * rad), cy + R * Math.sin(angle * rad), 'L', Math.abs(angle) > 1 ? cx + (vc - cy) / Math.tan(angle * rad) : cx + R * Math.cos(angle * rad), vc, 'L', cx + 1.5 * R, vc]);
-	    jQuery(r.node).addClass('legend');
+	    $(r.node).addClass('legend');
 	    r = paper.text(cx + 1.5 * R + 2, vc, sdiag_label[label_num]).attr({
 	      'font-size': textsize,
 	      'text-anchor': 'start'
 	    });
-	    jQuery(r.node).addClass('legend');
+	    $(r.node).addClass('legend');
 	    vc += vstep;
 	    angle += 2 * angstep;
 	    label_num--;
@@ -13684,7 +13688,7 @@ var kartograph =
 	  i = 0;
 	  results = [];
 	  while (i < nsteps + 1) {
-	    jQuery(r.items[i].node).addClass('legend');
+	    $(r.items[i].node).addClass('legend');
 	    results.push(i++);
 	  }
 	  return results;
@@ -13699,12 +13703,12 @@ var kartograph =
 	  ngrad = Math.round(2 * R / vstep);
 	  minR = Math.round(Math.sqrt(minv) * scale);
 	  r = paper.path(['M', cx, cy + R, 'A', R, R, 0, 0, 1, cx, cy + R - (2 * R)]).attr(props);
-	  jQuery(r.node).addClass('legend');
+	  $(r.node).addClass('legend');
 	  r = paper.text(cx + 2, cy + R - (2 * R), maxv.toLocaleString()).attr({
 	    'font-size': textsize,
 	    'text-anchor': 'start'
 	  });
-	  jQuery(r.node).addClass('legend');
+	  $(r.node).addClass('legend');
 	  i = ngrad - 1;
 	  while (i > 0) {
 	    radlabel = Math.round(Math.pow(i * R / (ngrad * scale), 2));
@@ -13713,23 +13717,23 @@ var kartograph =
 	    radius = Math.sqrt(radlabel) * scale;
 	    if (radlabel > 0 && 2 * (R - radius) > vstep) {
 	      r = paper.path(['M', cx, cy + R, 'A', radius, radius, 0, 0, 1, cx, cy + R - (2 * radius)]).attr(props);
-	      jQuery(r.node).addClass('legend');
+	      $(r.node).addClass('legend');
 	      r = paper.text(cx + 2, cy + R - (2 * radius), radlabel.toLocaleString()).attr({
 	        'font-size': textsize,
 	        'text-anchor': 'start'
 	      });
-	      jQuery(r.node).addClass('legend');
+	      $(r.node).addClass('legend');
 	    }
 	    i--;
 	  }
 	  if (minR !== R) {
 	    r = paper.path(['M', cx, cy + R, 'A', minR, minR, 0, 0, 1, cx, cy + R - (2 * minR)]).attr(props);
-	    jQuery(r.node).addClass('legend');
+	    $(r.node).addClass('legend');
 	    r = paper.text(cx + 2, cy + R - (2 * minR), minv.toLocaleString()).attr({
 	      'font-size': textsize,
 	      'text-anchor': 'start'
 	    });
-	    return jQuery(r.node).addClass('legend');
+	    return $(r.node).addClass('legend');
 	  }
 	};
 	
