@@ -149,7 +149,7 @@ class SymbolGroup
 
         # tooltips
         if type(@tooltip) == "function"
-            me._initTooltips()
+            @_initTooltips()
 
         # events
         $.each ['click', 'mouseenter', 'mouseleave'], (i, evt) =>
@@ -235,12 +235,14 @@ class SymbolGroup
     update: (opts, duration, easing) ->
         if not opts?
             opts = {}
+
         for s in @symbols
             for p in @type.props
                 if opts[p]?
-                    s[p] = @_evaluate opts[p],s.data
+                    s[p] = @_evaluate opts[p], s.data
                 else if this[p]?
-                    s[p] = @_evaluate this[p],s.data
+                    s[p] = @_evaluate this[p], s.data
+
             s.update(duration, easing)
         this
 

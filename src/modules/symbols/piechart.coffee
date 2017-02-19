@@ -71,22 +71,17 @@ class PieChart extends Symbol
         this
 
     update: (opts) ->
-        return
+        @chart.attr
+            style: @styles
+            class: @class
 
-        @path.attr
-            x: @x
-            y: @y
-            r: @radius
-        path = @path
-        path.node.setAttribute 'style', @styles[0]
-        path.node.setAttribute 'class', @class
-        if @title?
-            path.attr 'title',@titles[0]
+        @chart.attr 'title', @titles[0] if @title?
+
         this
 
     clear: ->
-        p.remove() for p in @chart
-        undefined
+        @chart?.remove()
+        @chart = null
 
     nodes: () ->
         for el in @chart
@@ -133,11 +128,12 @@ drawPieChart = (cx, cy, r, values, labels, colors, stroke) ->
             'stroke-width': 1
 
         p.mouseover () ->
-            p.stop().animate { transform: "s1.1 1.1 " + cx + " " + cy }, ms, "elastic"
-            return
+            p.stop().animate { transform: "s1.1 1.1 " + cx + " " + cy }, ms, mina.elastic
+
         p.mouseout () ->
-            p.stop().animate {transform: ""}, ms, "elastic"
-            return
+            p.stop().animate {transform: ""}, ms, mina.elastic
+
+
         angle += angleplus
         chart.push p
 

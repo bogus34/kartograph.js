@@ -275,10 +275,6 @@ class Kartograph
                 sg.remove()
             @symbolGroups = []
 
-        # if @paper?
-        #     $(@paper.canvas).remove()
-        #     @paper = undefined
-
         @svgSrc = null
 
     #

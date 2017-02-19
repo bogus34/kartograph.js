@@ -13175,7 +13175,7 @@ var kartograph =
 	      }
 	    }
 	    if (type(this.tooltip) === "function") {
-	      me._initTooltips();
+	      this._initTooltips();
 	    }
 	    $.each(['click', 'mouseenter', 'mouseleave'], (function(_this) {
 	      return function(i, evt) {
@@ -13507,30 +13507,22 @@ var kartograph =
 	  };
 	
 	  PieChart.prototype.update = function(opts) {
-	    var path;
-	    return;
-	    this.path.attr({
-	      x: this.x,
-	      y: this.y,
-	      r: this.radius
+	    this.chart.attr({
+	      style: this.styles,
+	      "class": this["class"]
 	    });
-	    path = this.path;
-	    path.node.setAttribute('style', this.styles[0]);
-	    path.node.setAttribute('class', this["class"]);
 	    if (this.title != null) {
-	      path.attr('title', this.titles[0]);
+	      this.chart.attr('title', this.titles[0]);
 	    }
 	    return this;
 	  };
 	
 	  PieChart.prototype.clear = function() {
-	    var k, len, p, ref;
-	    ref = this.chart;
-	    for (k = 0, len = ref.length; k < len; k++) {
-	      p = ref[k];
-	      p.remove();
+	    var ref;
+	    if ((ref = this.chart) != null) {
+	      ref.remove();
 	    }
-	    return void 0;
+	    return this.chart = null;
 	  };
 	
 	  PieChart.prototype.nodes = function() {
@@ -13587,14 +13579,14 @@ var kartograph =
 	      'stroke-width': 1
 	    });
 	    p.mouseover(function() {
-	      p.stop().animate({
+	      return p.stop().animate({
 	        transform: "s1.1 1.1 " + cx + " " + cy
-	      }, ms, "elastic");
+	      }, ms, mina.elastic);
 	    });
 	    p.mouseout(function() {
-	      p.stop().animate({
+	      return p.stop().animate({
 	        transform: ""
-	      }, ms, "elastic");
+	      }, ms, mina.elastic);
 	    });
 	    angle += angleplus;
 	    return chart.push(p);
