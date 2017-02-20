@@ -17,6 +17,7 @@
 ###
 
 $ = require 'jquery'
+{type} = require '../../utils'
 Symbol = require '../symbol'
 Snap = require '../../vendor/snap'
 
@@ -61,9 +62,8 @@ class PieChart extends Symbol
         true
 
     render: (layers) ->
-        #@path = @layers.mapcanvas.circle @x,@y,@radius
-        if @border?
-            bg = @layers.mapcanvas.circle(@x,@y,@radius+@borderWidth).attr
+        if @border
+            bg = @layers.mapcanvas.circle(@x, @y, @radius+@borderWidth).attr
                 stroke: 'none'
                 fill: @border
 
@@ -88,6 +88,18 @@ class PieChart extends Symbol
         for el in @chart
             el.node
 
+    tooltip: (tt) ->
+        if type(tt) isnt 'array' or type(tt[0]) isnt 'array'
+            return super
+
+        sectors = @nodes()
+        sectors.pop() if @border
+
+        for node, i in sectors
+            sectorTooltip = tt[i]
+            @_tooltipForNode node, sectorTooltip
+
+        this
 
 PieChart.props = ['radius','values','styles','class','titles', 'colors','border','borderWidth']
 PieChart.layers = [] #{ id:'a', type: 'svg' }
@@ -100,20 +112,25 @@ drawPieChart = (cx, cy, r, values, labels, colors, stroke) ->
 
     angle = -270
     total = 0
+    total += v for v in values
 
     sector = (cx, cy, r, startAngle, endAngle, params) ->
         x1 = cx + r * Math.cos(-startAngle * rad)
         x2 = cx + r * Math.cos(-endAngle * rad)
         y1 = cy + r * Math.sin(-startAngle * rad)
         y2 = cy + r * Math.sin(-endAngle * rad)
-        #["M", cx, cy, "L", x1, y1, "A", r, r, 0, +(endAngle - startAngle > 180), 0, x2, y2, "Z"]
-        pathStr = [
-            ['M'], [cx, cy]
-            ['L'], [x1, y1]
-            ['A'], [r, r, 0, +(endAngle - startAngle > 180), 0, x2, y2]
-            ['Z']
-        ].map( (a) -> a.join(',') ).join('')
-        paper.path(pathStr).attr(params)
+
+        if endAngle - startAngle < 360
+            pathStr = [
+                ['M'], [cx, cy]
+                ['L'], [x1, y1]
+                ['A'], [r, r, 0, +(endAngle - startAngle > 180), 0, x2, y2]
+                ['Z']
+            ].map( (a) -> a.join(',') ).join('')
+
+            paper.path(pathStr).attr(params)
+        else
+            paper.circle(cx, cy, r).attr(params)
 
     process = (j) ->
         value = values[j]
@@ -138,7 +155,6 @@ drawPieChart = (cx, cy, r, values, labels, colors, stroke) ->
         angle += angleplus
         chart.push p
 
-    total += v for v in values
     process i for i of values
 
     chart

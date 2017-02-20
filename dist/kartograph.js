@@ -13265,45 +13265,13 @@ var kartograph =
 	  };
 	
 	  SymbolGroup.prototype._initTooltips = function() {
-	    var cfg, j, k, len, len1, node, ref1, ref2, s, tooltips, tt;
-	    tooltips = this.tooltip;
+	    var j, len, ref1, s;
 	    ref1 = this.symbols;
 	    for (j = 0, len = ref1.length; j < len; j++) {
 	      s = ref1[j];
-	      cfg = {
-	        position: {
-	          target: 'mouse',
-	          viewport: $(window),
-	          adjust: {
-	            x: 7,
-	            y: 7
-	          }
-	        },
-	        show: {
-	          delay: 20
-	        },
-	        content: {},
-	        events: {
-	          show: function(evt, api) {
-	            return $('.qtip').filter(function() {
-	              return this !== api.elements.tooltip.get(0);
-	            }).hide();
-	          }
-	        }
-	      };
-	      tt = tooltips(s.data, s.key);
-	      if (type(tt) === "string") {
-	        cfg.content.text = tt;
-	      } else if (type(tt) === "array") {
-	        cfg.content.title = tt[0];
-	        cfg.content.text = tt[1];
-	      }
-	      ref2 = s.nodes();
-	      for (k = 0, len1 = ref2.length; k < len1; k++) {
-	        node = ref2[k];
-	        $(node).qtip(cfg);
-	      }
+	      s.tooltip(this.tooltip(s.data, s.key));
 	    }
+	    return void 0;
 	  };
 	
 	  SymbolGroup.prototype.onResize = function() {
@@ -13357,7 +13325,7 @@ var kartograph =
 /*!***********************************!*\
   !*** ./src/modules/symbol.coffee ***!
   \***********************************/
-/***/ function(module, exports) {
+/***/ function(module, exports, __webpack_require__) {
 
 	
 	/*
@@ -13377,7 +13345,11 @@ var kartograph =
 	    You should have received a copy of the GNU Lesser General Public
 	    License along with this library. If not, see <http://www.gnu.org/licenses/>.
 	 */
-	var Symbol;
+	var $, Symbol, type;
+	
+	$ = __webpack_require__(/*! jquery */ 2);
+	
+	type = __webpack_require__(/*! ../utils */ 12).type;
 	
 	Symbol = (function() {
 	
@@ -13409,6 +13381,48 @@ var kartograph =
 	  };
 	
 	  Symbol.prototype.clear = function() {
+	    return this;
+	  };
+	
+	  Symbol.prototype._tooltipForNode = function(node, tt) {
+	    var cfg;
+	    cfg = {
+	      position: {
+	        target: 'mouse',
+	        viewport: $(window),
+	        adjust: {
+	          x: 7,
+	          y: 7
+	        }
+	      },
+	      show: {
+	        delay: 20
+	      },
+	      content: {},
+	      events: {
+	        show: function(evt, api) {
+	          return $('.qtip').filter(function() {
+	            return this !== api.elements.tooltip.get(0);
+	          }).hide();
+	        }
+	      }
+	    };
+	    if (type(tt) === "string") {
+	      cfg.content.text = tt;
+	    } else if (type(tt) === "array") {
+	      cfg.content.text = tt.pop();
+	      cfg.content.title = tt.pop();
+	    }
+	    return $(node).qtip(cfg);
+	  };
+	
+	  Symbol.prototype.tooltip = function(tt) {
+	    var i, len, node, ref;
+	    ref = this.nodes();
+	    for (i = 0, len = ref.length; i < len; i++) {
+	      node = ref[i];
+	      this._tooltipForNode(node, tt);
+	    }
 	    return this;
 	  };
 	
@@ -13444,11 +13458,13 @@ var kartograph =
 	    You should have received a copy of the GNU Lesser General Public
 	    License along with this library. If not, see <http://www.gnu.org/licenses/>.
 	 */
-	var $, PieChart, Snap, Symbol, drawChoroLegend, drawCircleSizeLegend, drawPieChart, drawPiechartLegend, pieChartPlugin,
+	var $, PieChart, Snap, Symbol, drawChoroLegend, drawCircleSizeLegend, drawPieChart, drawPiechartLegend, pieChartPlugin, type,
 	  extend = function(child, parent) { for (var key in parent) { if (hasProp.call(parent, key)) child[key] = parent[key]; } function ctor() { this.constructor = child; } ctor.prototype = parent.prototype; child.prototype = new ctor(); child.__super__ = parent.prototype; return child; },
 	  hasProp = {}.hasOwnProperty;
 	
 	$ = __webpack_require__(/*! jquery */ 2);
+	
+	type = __webpack_require__(/*! ../../utils */ 12).type;
 	
 	Symbol = __webpack_require__(/*! ../symbol */ 25);
 	
@@ -13499,7 +13515,7 @@ var kartograph =
 	
 	  PieChart.prototype.render = function(layers) {
 	    var bg;
-	    if (this.border != null) {
+	    if (this.border) {
 	      bg = this.layers.mapcanvas.circle(this.x, this.y, this.radius + this.borderWidth).attr({
 	        stroke: 'none',
 	        fill: this.border
@@ -13542,6 +13558,23 @@ var kartograph =
 	    return results;
 	  };
 	
+	  PieChart.prototype.tooltip = function(tt) {
+	    var i, k, len, node, sectorTooltip, sectors;
+	    if (type(tt) !== 'array' || type(tt[0]) !== 'array') {
+	      return PieChart.__super__.tooltip.apply(this, arguments);
+	    }
+	    sectors = this.nodes();
+	    if (this.border) {
+	      sectors.pop();
+	    }
+	    for (i = k = 0, len = sectors.length; k < len; i = ++k) {
+	      node = sectors[i];
+	      sectorTooltip = tt[i];
+	      this._tooltipForNode(node, sectorTooltip);
+	    }
+	    return this;
+	  };
+	
 	  return PieChart;
 	
 	})(Symbol);
@@ -13560,16 +13593,24 @@ var kartograph =
 	  chart = Snap.set();
 	  angle = -270;
 	  total = 0;
+	  for (k = 0, len = values.length; k < len; k++) {
+	    v = values[k];
+	    total += v;
+	  }
 	  sector = function(cx, cy, r, startAngle, endAngle, params) {
 	    var pathStr, x1, x2, y1, y2;
 	    x1 = cx + r * Math.cos(-startAngle * rad);
 	    x2 = cx + r * Math.cos(-endAngle * rad);
 	    y1 = cy + r * Math.sin(-startAngle * rad);
 	    y2 = cy + r * Math.sin(-endAngle * rad);
-	    pathStr = [['M'], [cx, cy], ['L'], [x1, y1], ['A'], [r, r, 0, +(endAngle - startAngle > 180), 0, x2, y2], ['Z']].map(function(a) {
-	      return a.join(',');
-	    }).join('');
-	    return paper.path(pathStr).attr(params);
+	    if (endAngle - startAngle < 360) {
+	      pathStr = [['M'], [cx, cy], ['L'], [x1, y1], ['A'], [r, r, 0, +(endAngle - startAngle > 180), 0, x2, y2], ['Z']].map(function(a) {
+	        return a.join(',');
+	      }).join('');
+	      return paper.path(pathStr).attr(params);
+	    } else {
+	      return paper.circle(cx, cy, r).attr(params);
+	    }
 	  };
 	  process = function(j) {
 	    var angleplus, color, delta, ms, p, popangle, value;
@@ -13597,10 +13638,6 @@ var kartograph =
 	    angle += angleplus;
 	    return chart.push(p);
 	  };
-	  for (k = 0, len = values.length; k < len; k++) {
-	    v = values[k];
-	    total += v;
-	  }
 	  for (i in values) {
 	    process(i);
 	  }

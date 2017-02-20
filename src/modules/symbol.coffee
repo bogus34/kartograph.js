@@ -16,6 +16,9 @@
     License along with this library. If not, see <http://www.gnu.org/licenses/>.
 ###
 
+$ = require 'jquery'
+{type} = require '../utils'
+
 class Symbol
     ### base class for all symbols ###
     constructor: (opts) ->
@@ -36,5 +39,38 @@ class Symbol
     nodes: () -> []
 
     clear: () -> this
+
+    _tooltipForNode: (node, tt) ->
+        cfg =
+            position:
+                target: 'mouse'
+                viewport: $(window)
+                adjust:
+                    x:7
+                    y:7
+            show:
+                delay: 20
+            content: {}
+            events:
+                show: (evt, api) ->
+                    # make sure that two tooltips are never shown
+                    # together at the same time
+                    $('.qtip').filter () ->
+                        this != api.elements.tooltip.get(0)
+                    .hide()
+
+        if type(tt) == "string"
+            cfg.content.text = tt
+        else if type(tt) == "array"
+            # cfg.content.title = tt[0]
+            # cfg.content.text = tt[1]
+            cfg.content.text = tt.pop()
+            cfg.content.title = tt.pop()
+
+        $(node).qtip(cfg)
+
+    tooltip: (tt) ->
+        @_tooltipForNode(node, tt) for node in @nodes()
+        this
 
 module.exports = Symbol
