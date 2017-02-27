@@ -19,7 +19,7 @@
 $ = require 'jquery'
 Kartograph = require '../core/kartograph'
 {LonLat} = require '../core/lonlat'
-{warn, type} = require '../utils'
+{warn, type, asyncEach} = require '../utils'
 
 class SymbolGroup
     ### symbol groups
@@ -142,27 +142,28 @@ class SymbolGroup
                 m = if sortDir is 'asc' then 1 else -1
                 return if va > vb then 1*m else -1*m
 
-        # render
-        for s in @symbols
+        @cancelRender = asyncEach @symbols, 100, (s) =>
             s.render()
             for node in s.nodes()
                 node.symbol = s
+            @updateSymbol(s)
 
-        # tooltips
-        if type(@tooltip) is "function"
-            @_initTooltips()
+        , =>
+             # tooltips
+            if type(@tooltip) is "function"
+                @_initTooltips()
 
-        # events
-        $.each ['click', 'mouseenter', 'mouseleave'], (i, evt) =>
-            if type(this[evt]) is "function"
-                for s in @symbols
-                    for node in s.nodes()
-                        $(node)[evt] (e) =>
-                            tgt = e.target
-                            while not tgt.symbol
-                                tgt = $(tgt).parent().get(0)
-                            e.stopPropagation()
-                            this[evt] tgt.symbol.data, tgt.symbol, e
+            # events
+            $.each ['click', 'mouseenter', 'mouseleave'], (i, evt) =>
+                if type(this[evt]) is "function"
+                    for s in @symbols
+                        for node in s.nodes()
+                            $(node)[evt] (e) =>
+                                tgt = e.target
+                                while not tgt.symbol
+                                    tgt = $(tgt).parent().get(0)
+                                e.stopPropagation()
+                                this[evt] tgt.symbol.data, tgt.symbol, e
         this
 
     tooltips: (cb) ->
@@ -182,6 +183,7 @@ class SymbolGroup
                 warn 'error: symbolgroup.remove'
 
         if not filter?
+            @cancelRender?()
             for id,layer of @layers when id isnt "mapcanvas"
                 layer.remove()
         else
@@ -205,18 +207,23 @@ class SymbolGroup
             s.update()
         return
 
+    updateSymbol: (s, opts, duration, easing) ->
+        if not opts?
+            opts = {}
+
+        for p in @type.props
+            if opts[p]?
+                s[p] = @_evaluate opts[p], s.data
+            else if this[p]?
+                s[p] = @_evaluate this[p], s.data
+
+        s.update(duration, easing)
+
     update: (opts, duration, easing) ->
         if not opts?
             opts = {}
 
-        for s in @symbols
-            for p in @type.props
-                if opts[p]?
-                    s[p] = @_evaluate opts[p], s.data
-                else if this[p]?
-                    s[p] = @_evaluate this[p], s.data
-
-            s.update(duration, easing)
+        @updateSymbol(s, opts, duration, easing) for s in @symbols
         this
 
 

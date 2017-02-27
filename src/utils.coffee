@@ -30,4 +30,23 @@ type = do ->
         strType = Object::toString.call(obj)
         classToType[strType] or "object"
 
-module.exports = {warn, log, type}
+asyncEach = (list, chunkSize, fn, done) ->
+    if typeof chunkSize is 'function'
+        done = fn
+        fn = chunkSize
+        chunkSize = 200
+    timeout = null
+    step = (skip) ->
+        for n in [skip..Math.min(skip + chunkSize, list.length - 1)]
+            fn list[n], n
+
+        if n >= list.length
+            timeout = null
+            setTimeout ( -> done() ), 0 if done
+        else
+            timeout = setTimeout (-> step(n)), 0
+
+    step 0
+    -> clearTimeout timeout if timeout
+
+module.exports = {warn, log, type, asyncEach}

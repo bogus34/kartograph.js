@@ -18,7 +18,7 @@
 
 $ = require 'jquery'
 Snap = require '../vendor/snap'
-{type} = require '../utils'
+{type, asyncEach} = require '../utils'
 
 PANZOOM_EVENTS = [
     'beforeApplyZoom', 'afterApplyZoom',
@@ -110,12 +110,21 @@ class MapLayer
                     $(path).attr(attrs)
         this
 
+    bindEvents: (opts) ->
+        events = [
+            'click', 'mouseenter', 'mouseleave', 'dblclick',
+            'mousedown', 'mouseup', 'mouseover', 'mouseout'
+        ]
+
+        for e in events when typeof opts[e] is 'function'
+            @on e, opts[e]
+
     on: (event, callback) ->
         if event in PANZOOM_EVENTS
             @panzoom()?.on event, callback
         else
             ctx = new EventContext(event, callback, this)
-            $(path).bind event, ctx.handle for path in @paths
+            $(path).on event, ctx.handle for path in @paths
             this
 
     panzoom: -> @paper.panzoom()
@@ -173,19 +182,5 @@ resolve = (prop, data) ->
     if type(prop) == 'function'
         return prop data
     return prop
-
-asyncEach = (list, chunkSize, fn) ->
-    if typeof chunkSize is 'function'
-        fn = chunkSize
-        chunkSize = 200
-    timeout = null
-    step = (skip) ->
-        for n in [skip..Math.min(skip + chunkSize, list.length - 1)]
-            fn list[n], n
-
-        timeout = setTimeout (-> step(n)), 0 unless n >= list.length
-
-    step 0
-    -> clearTimeout timeout if timeout
 
 module.exports = MapLayer

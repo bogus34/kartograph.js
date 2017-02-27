@@ -134,6 +134,7 @@ class Kartograph
             @layers[layer_id] = new MapLayer(layer_id, path_id, this, opts.filter, @paper)
 
         layer.addFragment $paths
+        layer.bindEvents opts
         layer.style opts.styles if opts.styles
         layer.tooltips opts.tooltips if opts.tooltips
 

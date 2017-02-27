@@ -263,6 +263,7 @@ var kartograph =
 	    }
 	    layer = layer_id in this.layers ? this.layers[layer_id] : (this.layerIds.push(layer_id), this.layers[layer_id] = new MapLayer(layer_id, path_id, this, opts.filter, this.paper));
 	    layer.addFragment($paths);
+	    layer.bindEvents(opts);
 	    if (opts.styles) {
 	      layer.style(opts.styles);
 	    }
@@ -10054,7 +10055,7 @@ var kartograph =
   \**************************/
 /***/ function(module, exports) {
 
-	var log, type, warn;
+	var asyncEach, log, type, warn;
 	
 	warn = function(s) {
 	  var e;
@@ -10106,10 +10107,45 @@ var kartograph =
 	  };
 	})();
 	
+	asyncEach = function(list, chunkSize, fn, done) {
+	  var step, timeout;
+	  if (typeof chunkSize === 'function') {
+	    done = fn;
+	    fn = chunkSize;
+	    chunkSize = 200;
+	  }
+	  timeout = null;
+	  step = function(skip) {
+	    var i, n, ref, ref1;
+	    for (n = i = ref = skip, ref1 = Math.min(skip + chunkSize, list.length - 1); ref <= ref1 ? i <= ref1 : i >= ref1; n = ref <= ref1 ? ++i : --i) {
+	      fn(list[n], n);
+	    }
+	    if (n >= list.length) {
+	      timeout = null;
+	      if (done) {
+	        return setTimeout((function() {
+	          return done();
+	        }), 0);
+	      }
+	    } else {
+	      return timeout = setTimeout((function() {
+	        return step(n);
+	      }), 0);
+	    }
+	  };
+	  step(0);
+	  return function() {
+	    if (timeout) {
+	      return clearTimeout(timeout);
+	    }
+	  };
+	};
+	
 	module.exports = {
 	  warn: warn,
 	  log: log,
-	  type: type
+	  type: type,
+	  asyncEach: asyncEach
 	};
 
 
@@ -12356,7 +12392,7 @@ var kartograph =
 	    You should have received a copy of the GNU Lesser General Public
 	    License along with this library. If not, see <http://www.gnu.org/licenses/>.
 	 */
-	var $, EventContext, MapLayer, PANZOOM_EVENTS, Snap, asyncEach, resolve, type,
+	var $, EventContext, MapLayer, PANZOOM_EVENTS, Snap, asyncEach, ref, resolve, type,
 	  bind = function(fn, me){ return function(){ return fn.apply(me, arguments); }; },
 	  indexOf = [].indexOf || function(item) { for (var i = 0, l = this.length; i < l; i++) { if (i in this && this[i] === item) return i; } return -1; };
 	
@@ -12364,7 +12400,7 @@ var kartograph =
 	
 	Snap = __webpack_require__(/*! ../vendor/snap */ 3);
 	
-	type = __webpack_require__(/*! ../utils */ 12).type;
+	ref = __webpack_require__(/*! ../utils */ 12), type = ref.type, asyncEach = ref.asyncEach;
 	
 	PANZOOM_EVENTS = ['beforeApplyZoom', 'afterApplyZoom', 'beforeApplyPan', 'afterApplyPan'];
 	
@@ -12399,7 +12435,7 @@ var kartograph =
 	  }
 	
 	  MapLayer.prototype.addFragment = function(svg_paths) {
-	    var fragment, ref;
+	    var fragment, ref1;
 	    svg_paths = svg_paths.map(function(i, p) {
 	      return $(p).clone().attr({
 	        fill: 'none',
@@ -12411,7 +12447,7 @@ var kartograph =
 	      this.g = this.paper.g();
 	    }
 	    this.g.append(fragment);
-	    (ref = this.paths).push.apply(ref, svg_paths);
+	    (ref1 = this.paths).push.apply(ref1, svg_paths);
 	    return void 0;
 	  };
 	
@@ -12484,16 +12520,29 @@ var kartograph =
 	    return this;
 	  };
 	
+	  MapLayer.prototype.bindEvents = function(opts) {
+	    var e, events, j, len, results;
+	    events = ['click', 'mouseenter', 'mouseleave', 'dblclick', 'mousedown', 'mouseup', 'mouseover', 'mouseout'];
+	    results = [];
+	    for (j = 0, len = events.length; j < len; j++) {
+	      e = events[j];
+	      if (typeof opts[e] === 'function') {
+	        results.push(this.on(e, opts[e]));
+	      }
+	    }
+	    return results;
+	  };
+	
 	  MapLayer.prototype.on = function(event, callback) {
-	    var ctx, j, len, path, ref, ref1;
+	    var ctx, j, len, path, ref1, ref2;
 	    if (indexOf.call(PANZOOM_EVENTS, event) >= 0) {
-	      return (ref = this.panzoom()) != null ? ref.on(event, callback) : void 0;
+	      return (ref1 = this.panzoom()) != null ? ref1.on(event, callback) : void 0;
 	    } else {
 	      ctx = new EventContext(event, callback, this);
-	      ref1 = this.paths;
-	      for (j = 0, len = ref1.length; j < len; j++) {
-	        path = ref1[j];
-	        $(path).bind(event, ctx.handle);
+	      ref2 = this.paths;
+	      for (j = 0, len = ref2.length; j < len; j++) {
+	        path = ref2[j];
+	        $(path).on(event, ctx.handle);
 	      }
 	      return this;
 	    }
@@ -12550,7 +12599,7 @@ var kartograph =
 	  };
 	
 	  MapLayer.prototype.sort = function(sortBy) {
-	    var j, len, lp, path, ref;
+	    var j, len, lp, path, ref1;
 	    this.paths.sort(function(a, b) {
 	      var av, bv;
 	      av = sortBy(a.data());
@@ -12565,9 +12614,9 @@ var kartograph =
 	      }
 	    });
 	    lp = false;
-	    ref = this.paths;
-	    for (j = 0, len = ref.length; j < len; j++) {
-	      path = ref[j];
+	    ref1 = this.paths;
+	    for (j = 0, len = ref1.length; j < len; j++) {
+	      path = ref1[j];
 	      if (lp) {
 	        $(path).insertAfter(lp);
 	      }
@@ -12585,32 +12634,6 @@ var kartograph =
 	    return prop(data);
 	  }
 	  return prop;
-	};
-	
-	asyncEach = function(list, chunkSize, fn) {
-	  var step, timeout;
-	  if (typeof chunkSize === 'function') {
-	    fn = chunkSize;
-	    chunkSize = 200;
-	  }
-	  timeout = null;
-	  step = function(skip) {
-	    var j, n, ref, ref1;
-	    for (n = j = ref = skip, ref1 = Math.min(skip + chunkSize, list.length - 1); ref <= ref1 ? j <= ref1 : j >= ref1; n = ref <= ref1 ? ++j : --j) {
-	      fn(list[n], n);
-	    }
-	    if (!(n >= list.length)) {
-	      return timeout = setTimeout((function() {
-	        return step(n);
-	      }), 0);
-	    }
-	  };
-	  step(0);
-	  return function() {
-	    if (timeout) {
-	      return clearTimeout(timeout);
-	    }
-	  };
 	};
 	
 	module.exports = MapLayer;
@@ -13001,7 +13024,7 @@ var kartograph =
 	    You should have received a copy of the GNU Lesser General Public
 	    License along with this library. If not, see <http://www.gnu.org/licenses/>.
 	 */
-	var $, Kartograph, LonLat, SymbolGroup, ref, type, warn,
+	var $, Kartograph, LonLat, SymbolGroup, asyncEach, ref, type, warn,
 	  bind = function(fn, me){ return function(){ return fn.apply(me, arguments); }; };
 	
 	$ = __webpack_require__(/*! jquery */ 2);
@@ -13010,7 +13033,7 @@ var kartograph =
 	
 	LonLat = __webpack_require__(/*! ../core/lonlat */ 20).LonLat;
 	
-	ref = __webpack_require__(/*! ../utils */ 12), warn = ref.warn, type = ref.type;
+	ref = __webpack_require__(/*! ../utils */ 12), warn = ref.warn, type = ref.type, asyncEach = ref.asyncEach;
 	
 	SymbolGroup = (function() {
 	
@@ -13136,7 +13159,7 @@ var kartograph =
 	  };
 	
 	  SymbolGroup.prototype.render = function() {
-	    var j, k, len, len1, node, ref1, ref2, ref3, s, sortBy, sortDir;
+	    var ref1, sortBy, sortDir;
 	    if (this.sortBy) {
 	      sortDir = 'asc';
 	      if (type(this.sortBy) === "string") {
@@ -13166,50 +13189,53 @@ var kartograph =
 	        };
 	      })(this));
 	    }
-	    ref2 = this.symbols;
-	    for (j = 0, len = ref2.length; j < len; j++) {
-	      s = ref2[j];
-	      s.render();
-	      ref3 = s.nodes();
-	      for (k = 0, len1 = ref3.length; k < len1; k++) {
-	        node = ref3[k];
-	        node.symbol = s;
-	      }
-	    }
-	    if (type(this.tooltip) === "function") {
-	      this._initTooltips();
-	    }
-	    $.each(['click', 'mouseenter', 'mouseleave'], (function(_this) {
-	      return function(i, evt) {
-	        var len2, n, ref4, results;
-	        if (type(_this[evt]) === "function") {
-	          ref4 = _this.symbols;
-	          results = [];
-	          for (n = 0, len2 = ref4.length; n < len2; n++) {
-	            s = ref4[n];
-	            results.push((function() {
-	              var len3, o, ref5, results1;
-	              ref5 = s.nodes();
-	              results1 = [];
-	              for (o = 0, len3 = ref5.length; o < len3; o++) {
-	                node = ref5[o];
-	                results1.push($(node)[evt]((function(_this) {
-	                  return function(e) {
-	                    var tgt;
-	                    tgt = e.target;
-	                    while (!tgt.symbol) {
-	                      tgt = $(tgt).parent().get(0);
-	                    }
-	                    e.stopPropagation();
-	                    return _this[evt](tgt.symbol.data, tgt.symbol, e);
-	                  };
-	                })(this)));
-	              }
-	              return results1;
-	            }).call(_this));
-	          }
-	          return results;
+	    this.cancelRender = asyncEach(this.symbols, 100, (function(_this) {
+	      return function(s) {
+	        var j, len, node, ref2;
+	        s.render();
+	        ref2 = s.nodes();
+	        for (j = 0, len = ref2.length; j < len; j++) {
+	          node = ref2[j];
+	          node.symbol = s;
 	        }
+	        return _this.updateSymbol(s);
+	      };
+	    })(this), (function(_this) {
+	      return function() {
+	        if (type(_this.tooltip) === "function") {
+	          _this._initTooltips();
+	        }
+	        return $.each(['click', 'mouseenter', 'mouseleave'], function(i, evt) {
+	          var j, len, node, ref2, results, s;
+	          if (type(_this[evt]) === "function") {
+	            ref2 = _this.symbols;
+	            results = [];
+	            for (j = 0, len = ref2.length; j < len; j++) {
+	              s = ref2[j];
+	              results.push((function() {
+	                var k, len1, ref3, results1;
+	                ref3 = s.nodes();
+	                results1 = [];
+	                for (k = 0, len1 = ref3.length; k < len1; k++) {
+	                  node = ref3[k];
+	                  results1.push($(node)[evt]((function(_this) {
+	                    return function(e) {
+	                      var tgt;
+	                      tgt = e.target;
+	                      while (!tgt.symbol) {
+	                        tgt = $(tgt).parent().get(0);
+	                      }
+	                      e.stopPropagation();
+	                      return _this[evt](tgt.symbol.data, tgt.symbol, e);
+	                    };
+	                  })(this)));
+	                }
+	                return results1;
+	              }).call(_this));
+	            }
+	            return results;
+	          }
+	        });
 	      };
 	    })(this));
 	    return this;
@@ -13239,6 +13265,9 @@ var kartograph =
 	      }
 	    }
 	    if (filter == null) {
+	      if (typeof this.cancelRender === "function") {
+	        this.cancelRender();
+	      }
 	      ref2 = this.layers;
 	      results = [];
 	      for (id in ref2) {
@@ -13284,24 +13313,32 @@ var kartograph =
 	    }
 	  };
 	
+	  SymbolGroup.prototype.updateSymbol = function(s, opts, duration, easing) {
+	    var j, len, p, ref1;
+	    if (opts == null) {
+	      opts = {};
+	    }
+	    ref1 = this.type.props;
+	    for (j = 0, len = ref1.length; j < len; j++) {
+	      p = ref1[j];
+	      if (opts[p] != null) {
+	        s[p] = this._evaluate(opts[p], s.data);
+	      } else if (this[p] != null) {
+	        s[p] = this._evaluate(this[p], s.data);
+	      }
+	    }
+	    return s.update(duration, easing);
+	  };
+	
 	  SymbolGroup.prototype.update = function(opts, duration, easing) {
-	    var j, k, len, len1, p, ref1, ref2, s;
+	    var j, len, ref1, s;
 	    if (opts == null) {
 	      opts = {};
 	    }
 	    ref1 = this.symbols;
 	    for (j = 0, len = ref1.length; j < len; j++) {
 	      s = ref1[j];
-	      ref2 = this.type.props;
-	      for (k = 0, len1 = ref2.length; k < len1; k++) {
-	        p = ref2[k];
-	        if (opts[p] != null) {
-	          s[p] = this._evaluate(opts[p], s.data);
-	        } else if (this[p] != null) {
-	          s[p] = this._evaluate(this[p], s.data);
-	        }
-	      }
-	      s.update(duration, easing);
+	      this.updateSymbol(s, opts, duration, easing);
 	    }
 	    return this;
 	  };
