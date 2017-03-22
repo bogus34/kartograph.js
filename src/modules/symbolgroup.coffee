@@ -78,7 +78,6 @@ class SymbolGroup
                 @add d, i
 
         @layout()
-        @render()
         @map.addSymbolGroup(this)
 
 
@@ -122,7 +121,7 @@ class SymbolGroup
 
         this
 
-    render: () ->
+    render: (done) ->
         # sort
         if @sortBy
             sortDir = 'asc'
@@ -164,6 +163,9 @@ class SymbolGroup
                                     tgt = $(tgt).parent().get(0)
                                 e.stopPropagation()
                                 this[evt] tgt.symbol.data, tgt.symbol, e
+
+            done?()
+
         this
 
     tooltips: (cb) ->
@@ -229,8 +231,8 @@ class SymbolGroup
 
 SymbolGroup._layerid = 0
 
-Kartograph::addSymbols = (opts) ->
+Kartograph::addSymbols = (opts, done) ->
     opts.map = this
-    new SymbolGroup(opts)
+    new SymbolGroup(opts).render(done)
 
 module.exports = SymbolGroup

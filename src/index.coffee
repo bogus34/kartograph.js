@@ -8,6 +8,8 @@ PieChart = require './modules/symbols/piechart'
 
 kartograph = -> new Kartograph(arguments...)
 
+Snap = require './vendor/snap'
+
 module.exports = {
     version: "0.9.0"
     __verbose: false
@@ -20,4 +22,5 @@ module.exports = {
     SymbolGroup
     Symbol
     PieChart
+    Snap
 }

@@ -28,6 +28,7 @@ PANZOOM_EVENTS = [
 class EventContext
     constructor: (@type, @cb, @layer) ->
     handle: (e) =>
+        return if @type is 'click' and @layer.panzoom().isDragging()
         path = $(e.target)
         @cb path.data(), path, e
 
@@ -78,18 +79,19 @@ class MapLayer
         @paths = []
         undefined
 
-    style: (props, value, duration, delay) ->
+    style: (props, value, duration, delay, done) ->
         if type(props) == "string"
             key = props
             props = {}
             props[key] = value
         else if type(props) == "object"
+            done = delay
             delay = duration
             duration = value
 
         duration ?= 0
 
-        @cancelStyle = asyncEach @paths, 500, (path) ->
+        fn = (path) ->
             attrs = {}
             data = $(path).data()
             for prop, val of props
@@ -108,13 +110,14 @@ class MapLayer
                     , 0
                 else
                     $(path).attr(attrs)
-        this
+
+        @cancelStyle = asyncEach @paths, 500, fn, done
 
     bindEvents: (opts) ->
         events = [
             'click', 'mouseenter', 'mouseleave', 'dblclick',
             'mousedown', 'mouseup', 'mouseover', 'mouseout'
-        ]
+        ].concat PANZOOM_EVENTS
 
         for e in events when typeof opts[e] is 'function'
             @on e, opts[e]
@@ -129,7 +132,7 @@ class MapLayer
 
     panzoom: -> @paper.panzoom()
 
-    tooltips: (content, delay) ->
+    tooltips: (content, delay, done) ->
         setTooltip = (path, tt) ->
             cfg =
                 position:
@@ -156,10 +159,12 @@ class MapLayer
                 cfg.content.text = 'n/a'
             $(path).qtip(cfg)
 
-        @cancelTooltips = asyncEach @paths, (path) ->
+        fn = (path) ->
             data = $(path).data()
             tt = resolve content, data
             setTooltip path, tt
+
+        @cancelTooltips = asyncEach @paths, fn, done
 
         this
 

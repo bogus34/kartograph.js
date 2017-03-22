@@ -138,9 +138,9 @@ class PanZoom extends EventEmitter
         paperDim = @getPaperDim()
 
         @currZoom += val
-        if @currZoom <= @settings.minZoom
+        if @currZoom < @settings.minZoom
             @currZoom = @settings.minZoom
-        else if @currZoom >= @settings.maxZoom
+        else if @currZoom > @settings.maxZoom
             @currZoom = @settings.maxZoom
         else
             centerPoint = centerPoint or
@@ -213,12 +213,6 @@ class PanZoom extends EventEmitter
     getCurrentZoom: -> @currZoom
 
 init = (Snap, Element, Paper) ->
-    # Snap.fn.panzoom = (options) ->
-    #     if @_panzoomInstance
-    #         @_panzoomInstance
-    #     else
-    #         @_panzoomInstance = new PanZoom(this, options)
-
     Paper::panzoom = (options) ->
         if @_panzoomInstance
             @_panzoomInstance

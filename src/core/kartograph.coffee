@@ -18,6 +18,7 @@
 
 $ = require 'jquery'
 Snap = require '../vendor/snap'
+series = require 'async/series'
 
 {warn, type} = require '../utils'
 View = require './view'
@@ -101,7 +102,7 @@ class Kartograph
 
         callback? this
 
-    addLayer: (id, opts = {}) ->
+    addLayer: (id, opts = {}, done) ->
         ###
         add new layer
         ###
@@ -121,11 +122,11 @@ class Kartograph
 
         if svgLayer.length == 0
             warn "didn't find any paths for layer \"#{src_id}\""
-            return
+            return done?()
 
         $paths = $('*', svgLayer[0])
 
-        return this unless $paths.length
+        return done?() unless $paths.length
 
         layer = if layer_id of @layers
             @layers[layer_id]
@@ -135,8 +136,20 @@ class Kartograph
 
         layer.addFragment $paths
         layer.bindEvents opts
-        layer.style opts.styles if opts.styles
-        layer.tooltips opts.tooltips if opts.tooltips
+
+        series [
+            (next) ->
+                if opts.styles
+                    layer.style opts.styles, null, null, next
+                else
+                    next()
+
+            (next) ->
+                if opts.tooltips
+                    layer.tooltips opts.tooltips, null, next
+                else
+                    next()
+        ], done
 
     createSVGLayer: (id, opts = {}) ->
         @_layerCnt ?= 0
