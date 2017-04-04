@@ -63,12 +63,13 @@ class PieChart extends Symbol
 
     render: (layers) ->
         if @border
-            bg = @layers.mapcanvas.circle(@x, @y, @radius+@borderWidth).attr
-                stroke: 'none'
-                fill: @border
+            bg = @layers.mapcanvas.circle(@x, @y, @radius).attr
+                stroke: @border
+                'stroke-width': @border
+                fill: 'none'
 
         @chart = @layers.mapcanvas.pieChart @x, @y, @radius, @values, @titles, @colors, "none"
-        @chart.push bg
+        @chart.push bg if bg
         this
 
     update: (opts) ->

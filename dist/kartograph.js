@@ -15224,13 +15224,16 @@ var kartograph =
 	  PieChart.prototype.render = function(layers) {
 	    var bg;
 	    if (this.border) {
-	      bg = this.layers.mapcanvas.circle(this.x, this.y, this.radius + this.borderWidth).attr({
-	        stroke: 'none',
-	        fill: this.border
+	      bg = this.layers.mapcanvas.circle(this.x, this.y, this.radius).attr({
+	        stroke: this.border,
+	        'stroke-width': this.border,
+	        fill: 'none'
 	      });
 	    }
 	    this.chart = this.layers.mapcanvas.pieChart(this.x, this.y, this.radius, this.values, this.titles, this.colors, "none");
-	    this.chart.push(bg);
+	    if (bg) {
+	      this.chart.push(bg);
+	    }
 	    return this;
 	  };
 	
