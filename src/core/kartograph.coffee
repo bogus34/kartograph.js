@@ -86,10 +86,14 @@ class Kartograph
 
         unless @paper
             @paper = @createSVGLayer(null, opts)
-            @paper.panzoom?().on 'afterApplyZoom', (val, _, panzoom) =>
+
+            @refresh = =>
+                panzoom = @paper.panzoom()
                 @reload panzoom.getCurrentPosition(), panzoom.getCurrentZoom(), opts, callback
-            @paper.panzoom?().on 'afterApplyPan', (dx, dy, panzoom) =>
-                @reload panzoom.getCurrentPosition(), panzoom.getCurrentZoom(), opts, callback
+
+            @paper.panzoom?().on 'afterApplyZoom', @refresh
+            @paper.panzoom?().on 'afterApplyPan', @refresh
+
 
         vp = @viewport
         @viewAB = AB = View.fromXML $view[0]

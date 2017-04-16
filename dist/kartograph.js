@@ -206,19 +206,18 @@ var kartograph =
 	    }
 	    if (!this.paper) {
 	      this.paper = this.createSVGLayer(null, opts);
+	      this.refresh = (function(_this) {
+	        return function() {
+	          var panzoom;
+	          panzoom = _this.paper.panzoom();
+	          return _this.reload(panzoom.getCurrentPosition(), panzoom.getCurrentZoom(), opts, callback);
+	        };
+	      })(this);
 	      if (typeof (base = this.paper).panzoom === "function") {
-	        base.panzoom().on('afterApplyZoom', (function(_this) {
-	          return function(val, _, panzoom) {
-	            return _this.reload(panzoom.getCurrentPosition(), panzoom.getCurrentZoom(), opts, callback);
-	          };
-	        })(this));
+	        base.panzoom().on('afterApplyZoom', this.refresh);
 	      }
 	      if (typeof (base1 = this.paper).panzoom === "function") {
-	        base1.panzoom().on('afterApplyPan', (function(_this) {
-	          return function(dx, dy, panzoom) {
-	            return _this.reload(panzoom.getCurrentPosition(), panzoom.getCurrentZoom(), opts, callback);
-	          };
-	        })(this));
+	        base1.panzoom().on('afterApplyPan', this.refresh);
 	      }
 	    }
 	    vp = this.viewport;
